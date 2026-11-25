@@ -9,4 +9,6 @@ pub use footer::build_footer;
 pub use inline_comment::PostTarget;
 pub use publish::publish_findings;
 pub use summary_comment::build_summary_body;
-pub use validation::{DropReason, DroppedFinding, ValidationOutcome, validate_violations};
+pub use validation::{
+    DropReason, DroppedFinding, ValidationOutcome, validate_answer, validate_violations,
+};

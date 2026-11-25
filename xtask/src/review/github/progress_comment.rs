@@ -1,9 +1,13 @@
 use crate::report::GateError;
 use crate::review::github::client::GitHub;
+use crate::review::github::run_counter::MAXIMUM_RUNS;
 
 pub const BOT_LOGIN: &str = "github-actions[bot]";
 pub const PROGRESS_MARKER: &str = "<!-- backyards-agent-review -->";
 const SHORT_SHA_LENGTH: usize = 7;
+const COMMENTS_PER_PAGE: usize = 100;
+const PROGRESS_LABEL: &str = "progress";
+const OTHER_LABEL: &str = "other";
 
 #[derive(Debug, Clone)]
 pub struct ProgressComment {
@@ -55,16 +59,27 @@ impl GitHub {
     }
 
     pub fn count_progress_comments(&self, pull_request: u64) -> Result<usize, GateError> {
+        let mut counted = 0;
+        for page in 1_usize.. {
+            let labels = self.label_comment_page(pull_request, page)?;
+            counted += labels
+                .iter()
+                .filter(|label| label.as_str() == PROGRESS_LABEL)
+                .count();
+            if counted >= MAXIMUM_RUNS || labels.len() < COMMENTS_PER_PAGE {
+                break;
+            }
+        }
+        Ok(counted)
+    }
+
+    fn label_comment_page(&self, pull_request: u64, page: usize) -> Result<Vec<String>, GateError> {
         let filter = format!(
-            ".[] | select(.user.login == \"{BOT_LOGIN}\" and (.body | contains(\"{PROGRESS_MARKER}\"))) | .id"
+            ".[] | if (.user.login == \"{BOT_LOGIN}\" and (.body | contains(\"{PROGRESS_MARKER}\"))) then \"{PROGRESS_LABEL}\" else \"{OTHER_LABEL}\" end"
         );
-        let output = self.api(
-            &format!("issues/{pull_request}/comments"),
-            &["--paginate", "--jq", &filter],
-        )?;
-        Ok(output
-            .lines()
-            .filter(|line| !line.trim().is_empty())
-            .count())
+        let route =
+            format!("issues/{pull_request}/comments?per_page={COMMENTS_PER_PAGE}&page={page}");
+        let output = self.api(&route, &["--jq", &filter])?;
+        Ok(output.lines().map(str::to_owned).collect())
     }
 }

@@ -137,12 +137,16 @@ fn start_stderr_drain(child: &mut Child) -> Option<JoinHandle<Vec<u8>>> {
 
 fn read_then_discard(mut stderr: ChildStderr) -> Vec<u8> {
     let mut collected = Vec::new();
-    (&mut stderr)
-        .take(STDERR_CAPTURE_LIMIT)
-        .read_to_end(&mut collected)
-        .ok();
-    std::io::copy(&mut stderr, &mut std::io::sink()).ok();
+    if let Err(error) = drain_stderr(&mut stderr, &mut collected) {
+        collected.extend_from_slice(format!("[stderr read failed: {error}]").as_bytes());
+    }
     collected
+}
+
+fn drain_stderr(stderr: &mut ChildStderr, collected: &mut Vec<u8>) -> std::io::Result<()> {
+    Read::take(&mut *stderr, STDERR_CAPTURE_LIMIT).read_to_end(collected)?;
+    std::io::copy(stderr, &mut std::io::sink())?;
+    Ok(())
 }
 
 fn spawn_with_piped_output(

@@ -24,10 +24,7 @@ pub fn summarize(outcomes: &[(ReviewerMode, ValidationOutcome)]) -> Vec<ReviewSu
 }
 
 fn describe_dropped(dropped: &DroppedFinding) -> String {
-    format!(
-        "  - {}:{} {}",
-        dropped.violation.path, dropped.violation.line, dropped.reason
-    )
+    format!("  - {}", dropped.describe())
 }
 
 pub fn describe_summary(summary: &ReviewSummary) -> String {

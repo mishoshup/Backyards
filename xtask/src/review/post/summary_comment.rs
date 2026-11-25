@@ -30,11 +30,13 @@ fn describe_summary_line(violation: &Violation) -> String {
 }
 
 fn describe_omitted(omitted: usize) -> String {
-    match omitted {
-        0 => String::new(),
-        1 => "\n\n1 further finding omitted.".to_owned(),
-        count => format!("\n\n{count} further findings omitted."),
+    if omitted == 0 {
+        return String::new();
     }
+    format!(
+        "\n\n{} omitted.",
+        pluralize(omitted, "further finding", "further findings")
+    )
 }
 
 #[derive(Debug, Default)]

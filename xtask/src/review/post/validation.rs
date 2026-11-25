@@ -3,7 +3,8 @@ use std::fmt;
 
 use crate::review::ReviewerMode;
 use crate::review::diff::AddedLines;
-use crate::review::model::Violation;
+use crate::review::model::{ReviewAnswer, Violation};
+use crate::review::prompt::{RuleFile, collect_allowed_rule_identifiers};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DropReason {
@@ -28,6 +29,35 @@ impl fmt::Display for DropReason {
 pub struct DroppedFinding {
     pub violation: Violation,
     pub reason: DropReason,
+}
+
+const DROPPED_BODY_PREVIEW_CHARACTERS: usize = 300;
+
+impl DroppedFinding {
+    #[must_use]
+    pub fn describe(&self) -> String {
+        let preview: String = self
+            .violation
+            .body
+            .chars()
+            .take(DROPPED_BODY_PREVIEW_CHARACTERS)
+            .collect();
+        format!(
+            "{}:{} {}: {preview}",
+            self.violation.path, self.violation.line, self.reason
+        )
+    }
+}
+
+#[must_use]
+pub fn validate_answer(
+    answer: ReviewAnswer,
+    mode: ReviewerMode,
+    added: &AddedLines,
+    rules: &[RuleFile],
+) -> ValidationOutcome {
+    let allowed = collect_allowed_rule_identifiers(rules);
+    validate_violations(answer.violations, mode, added, &allowed)
 }
 
 #[derive(Debug, Default)]

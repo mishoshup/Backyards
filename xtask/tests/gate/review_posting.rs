@@ -140,23 +140,40 @@ fn summary_body_reports_omitted_findings() {
 
 #[test]
 fn progress_comments_are_counted_from_the_listing() {
-    let (fixture, fake) = setup("never-matches", "11\n22\n");
+    let (fixture, fake) = setup("never-matches", "progress\nother\nprogress\n");
     let github = fake.github(fixture.path());
     assert_eq!(github.count_progress_comments(7).unwrap(), 2);
 }
 
 #[test]
+fn comment_listing_stops_paging_once_the_cap_is_known() {
+    let full_page = format!("{}progress\nprogress\n", "other\n".repeat(98));
+    let (fixture, fake) = setup("never-matches", &full_page);
+    let github = fake.github(fixture.path());
+    assert_eq!(github.count_progress_comments(7).unwrap(), 2);
+    assert_eq!(fake.calls().len(), 1);
+}
+
+#[test]
+fn only_the_owner_can_force_a_third_run() {
+    assert_eq!(
+        decide_run_permission(2, "/agent-review force", "COLLABORATOR"),
+        RunPermission::Refused { previous_runs: 2 }
+    );
+}
+
+#[test]
 fn third_run_is_refused_unless_forced() {
     assert_eq!(
-        decide_run_permission(1, "/agent-review"),
+        decide_run_permission(1, "/agent-review", "MEMBER"),
         RunPermission::Allowed
     );
     assert_eq!(
-        decide_run_permission(2, "/agent-review"),
+        decide_run_permission(2, "/agent-review", "OWNER"),
         RunPermission::Refused { previous_runs: 2 }
     );
     assert_eq!(
-        decide_run_permission(5, "please /agent-review force"),
+        decide_run_permission(5, "please /agent-review force", "OWNER"),
         RunPermission::Allowed
     );
 }

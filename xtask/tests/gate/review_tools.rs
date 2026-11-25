@@ -139,7 +139,7 @@ fn grep_names_files_it_could_not_search() {
     let output = run(&fixture, "grep", r#"{"pattern":"fn two"}"#);
     assert!(output.contains("[skipped files]"), "{output}");
     assert!(
-        output.contains("data/invalid.txt: not readable as text"),
+        output.contains("data/invalid.txt: cannot read file"),
         "{output}"
     );
 }

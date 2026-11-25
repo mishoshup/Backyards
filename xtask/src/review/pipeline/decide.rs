@@ -22,9 +22,11 @@ pub fn decide_run(
         return Ok(RunDecision::AlreadyReviewed);
     }
     let previous_runs = github.count_progress_comments(options.pull_request)?;
-    if let RunPermission::Refused { previous_runs } =
-        decide_run_permission(previous_runs, &options.comment_body)
-    {
+    if let RunPermission::Refused { previous_runs } = decide_run_permission(
+        previous_runs,
+        &options.comment_body,
+        &options.comment_author_association,
+    ) {
         return Ok(RunDecision::RunCapReached { previous_runs });
     }
     decide_by_changed_paths(github, options)

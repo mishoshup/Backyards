@@ -4,13 +4,12 @@ use std::path::{Path, PathBuf};
 use crate::report::{GateError, pluralize, write_report_line};
 use crate::review::diff::{AddedLines, parse_added_lines, read_local_diff};
 use crate::review::model::{Confidence, Violation, extract_json_object, parse_answer};
-use crate::review::post::{ValidationOutcome, validate_violations};
+use crate::review::post::{ValidationOutcome, validate_answer};
 use crate::review::prompt::{
-    build_system_prompt, build_user_prompt, collect_allowed_rule_identifiers,
-    load_reviewer_instructions, load_rule_files,
+    build_system_prompt, build_user_prompt, load_reviewer_instructions, load_rule_files,
 };
-use crate::review::worker::join_worker;
-use crate::review::{ALL_REVIEWER_MODES, ReviewError, ReviewerMode};
+use crate::review::worker::{ReviewerResult, run_each_reviewer_mode};
+use crate::review::{ReviewError, ReviewerMode};
 use crate::workspace::{Repository, capture_command};
 
 const HOLISTIC_REQUEST: &str = "Follow the instructions in the attached file.";
@@ -48,18 +47,8 @@ fn run_both_reviewers(
     repository: &Repository,
     options: &LocalOptions,
     context: &LocalContext,
-) -> Vec<(ReviewerMode, Result<ValidationOutcome, GateError>)> {
-    std::thread::scope(|scope| {
-        let workers: Vec<_> = ALL_REVIEWER_MODES
-            .iter()
-            .map(|mode| scope.spawn(|| run_one_reviewer(repository, options, context, *mode)))
-            .collect();
-        ALL_REVIEWER_MODES
-            .iter()
-            .zip(workers)
-            .map(|(mode, worker)| (*mode, join_worker(worker)))
-            .collect()
-    })
+) -> Vec<ReviewerResult> {
+    run_each_reviewer_mode(|mode| run_one_reviewer(repository, options, context, mode))
 }
 
 fn run_one_reviewer(
@@ -75,12 +64,11 @@ fn run_one_reviewer(
     let output = run_opencode(repository, options, mode, &prompt_path);
     remove_prompt_file(&prompt_path)?;
     let answer = parse_opencode_answer(&output?)?;
-    let allowed = collect_allowed_rule_identifiers(&context.rules);
-    Ok(validate_violations(
-        answer.violations,
+    Ok(validate_answer(
+        answer,
         mode,
         &context.added,
-        &allowed,
+        &context.rules,
     ))
 }
 
@@ -142,9 +130,7 @@ fn parse_opencode_answer(output: &str) -> Result<crate::review::ReviewAnswer, Re
     parse_answer(json)
 }
 
-fn report_outcomes(
-    outcomes: &[(ReviewerMode, Result<ValidationOutcome, GateError>)],
-) -> Result<(), GateError> {
+fn report_outcomes(outcomes: &[ReviewerResult]) -> Result<(), GateError> {
     let mut finding_count = 0;
     let mut failed_modes: BTreeSet<&'static str> = BTreeSet::new();
     for (mode, outcome) in outcomes {
@@ -182,10 +168,7 @@ fn report_validated(mode: ReviewerMode, validated: &ValidationOutcome) -> Result
         write_report_line(&describe_violation(violation))?;
     }
     for dropped in &validated.dropped {
-        write_report_line(&format!(
-            "  dropped {}:{} ({})",
-            dropped.violation.path, dropped.violation.line, dropped.reason
-        ))?;
+        write_report_line(&format!("  dropped {}", dropped.describe()))?;
     }
     Ok(validated.accepted.len())
 }

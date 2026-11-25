@@ -6,6 +6,7 @@ pub struct CiOptions {
     pub repository: String,
     pub event_name: String,
     pub comment_body: String,
+    pub comment_author_association: String,
     pub status_prefix: String,
 }
 

@@ -28,6 +28,8 @@ pub enum ReviewTask {
         event_name: String,
         #[arg(long, env = "REVIEW_COMMENT_BODY", default_value = "")]
         comment_body: String,
+        #[arg(long, env = "REVIEW_COMMENT_AUTHOR_ASSOCIATION", default_value = "")]
+        comment_author_association: String,
         #[arg(
             long,
             default_value = "ai-review-completed/deepseek",
@@ -51,6 +53,7 @@ pub fn run_review_task(task: &ReviewTask, repository: &Repository) -> Result<(),
             repository: github_repository,
             event_name,
             comment_body,
+            comment_author_association,
             status_prefix,
         } => run_ci_review(
             repository,
@@ -59,6 +62,7 @@ pub fn run_review_task(task: &ReviewTask, repository: &Repository) -> Result<(),
                 repository: github_repository.clone(),
                 event_name: event_name.clone(),
                 comment_body: comment_body.clone(),
+                comment_author_association: comment_author_association.clone(),
                 status_prefix: status_prefix.clone(),
             },
         ),

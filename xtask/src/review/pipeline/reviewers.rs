@@ -1,19 +1,16 @@
-use std::collections::BTreeSet;
-
 use crate::report::GateError;
 use crate::review::diff::{AddedLines, parse_added_lines};
 use crate::review::model::{
     ChatMessage, ChatRequest, ModelClient, ReviewAnswer, Role, parse_answer,
 };
 use crate::review::pipeline::endpoint::endpoint_for;
-use crate::review::post::{ValidationOutcome, validate_violations};
+use crate::review::post::{ValidationOutcome, validate_answer};
 use crate::review::prompt::{
-    RuleFile, build_system_prompt, build_user_prompt, collect_allowed_rule_identifiers,
-    load_reviewer_instructions, load_rule_files,
+    RuleFile, build_system_prompt, build_user_prompt, load_reviewer_instructions, load_rule_files,
 };
 use crate::review::tools::ToolRunner;
-use crate::review::worker::join_worker;
-use crate::review::{ALL_REVIEWER_MODES, ReviewerMode, run_holistic_review};
+use crate::review::worker::run_each_reviewer_mode;
+use crate::review::{ReviewerMode, run_holistic_review};
 use crate::workspace::Repository;
 
 pub struct ReviewContext<'context> {
@@ -37,20 +34,10 @@ pub fn load_review_context(
     })
 }
 
-pub type ReviewerResult = (ReviewerMode, Result<ValidationOutcome, GateError>);
+pub use crate::review::worker::ReviewerResult;
 
 pub fn run_both_reviewers(context: &ReviewContext<'_>) -> Vec<ReviewerResult> {
-    std::thread::scope(|scope| {
-        let workers: Vec<_> = ALL_REVIEWER_MODES
-            .iter()
-            .map(|mode| scope.spawn(|| run_one_reviewer(context, *mode)))
-            .collect();
-        ALL_REVIEWER_MODES
-            .iter()
-            .zip(workers)
-            .map(|(mode, worker)| (*mode, join_worker(worker)))
-            .collect()
-    })
+    run_each_reviewer_mode(|mode| run_one_reviewer(context, mode))
 }
 
 fn run_one_reviewer(
@@ -58,12 +45,11 @@ fn run_one_reviewer(
     mode: ReviewerMode,
 ) -> Result<ValidationOutcome, GateError> {
     let answer = request_answer(context, mode)?;
-    let allowed: BTreeSet<&str> = collect_allowed_rule_identifiers(&context.rules);
-    Ok(validate_violations(
-        answer.violations,
+    Ok(validate_answer(
+        answer,
         mode,
         &context.added,
-        &allowed,
+        &context.rules,
     ))
 }
 
