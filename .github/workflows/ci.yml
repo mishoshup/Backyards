@@ -16,7 +16,7 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@1.100.0
         with:
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
@@ -26,4 +26,4 @@ jobs:
       - name: Install actionlint and shellcheck
         run: brew install actionlint shellcheck
       - name: Gate
-        run: scripts/check.sh
+        run: cargo xtask check

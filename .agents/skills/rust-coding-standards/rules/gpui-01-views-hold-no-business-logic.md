@@ -1,6 +1,6 @@
 ---
 ruleId: GPUI-01
-enforcedBy: scripts/check-architecture.sh (desktop crate depends on feature crates only); review
+enforcedBy: cargo xtask architecture (desktop crate depends on feature crates only); review
 source: Hexagonal architecture (Cockburn); GPUI Entity model
 ---
 

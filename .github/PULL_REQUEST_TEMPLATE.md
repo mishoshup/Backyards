@@ -10,7 +10,7 @@ The change, listed per crate.
 
 Mark each item as checked, or write n/a if it does not apply.
 
-- [ ] `scripts/check.sh` passes on the final commit.
+- [ ] `cargo xtask check` passes on the final commit.
 - [ ] The behavior is demonstrated with command output or a real garden run on macOS.
 - [ ] Destructive paths use a dry run by default, an allowlist, an audit entry and a per-step report.
 - [ ] No silent drops: every skipped item is recorded and reported.

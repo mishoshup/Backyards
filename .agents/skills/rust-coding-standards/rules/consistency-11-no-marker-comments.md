@@ -1,6 +1,6 @@
 ---
 ruleId: CONSISTENCY-11
-enforcedBy: scripts/check-policy.sh; clippy::todo, unimplemented
+enforcedBy: cargo xtask policy; clippy::todo, unimplemented
 source: Project convention (general practice, enforced by review); Clippy lint list (rust-lang.github.io/rust-clippy): todo, unimplemented
 ---
 

@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/*"]
+members = ["crates/*", "xtask"]
 
 [workspace.package]
 version = "0.0.0"
@@ -16,6 +16,8 @@ categories = ["command-line-utilities", "development-tools"]
 kernel = { path = "crates/kernel", version = "0.0.0" }
 manifest = { path = "crates/manifest", version = "0.0.0" }
 gardens = { path = "crates/gardens", version = "0.0.0" }
+clap = { version = "4", features = ["derive", "env"] }
+regex = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "2"

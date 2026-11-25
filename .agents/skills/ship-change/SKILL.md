@@ -19,7 +19,7 @@ No commit, push or post occurs without explicit approval for that batch.
 ## 1. Gate
 
 ```bash
-scripts/check.sh
+cargo xtask check
 ```
 
 Correct every failure. Do not weaken a lint or add an opt-out. If a check cannot run, state which check and why.
@@ -44,7 +44,7 @@ Start one subagent that follows `.claude/agents/code-inline-reviewer.md` and one
 1. Confirm the account with `gh auth status`. It must be `mishoshup`.
 2. Fetch, then push with `git push origin HEAD:refs/heads/<branch>`. Never force-push.
 3. Open a draft pull request using the repository template. The title is `<type>(<scope>): <subject>` and its type matches the branch type.
-4. Run the naming check locally first: `PULL_REQUEST_TITLE=... PULL_REQUEST_BRANCH=... scripts/check-pull-request-naming.sh`.
+4. Run the naming check locally first: `cargo xtask pull-request-naming --title "..." --branch "..."`.
 5. After review, merge by squash and delete the branch.
 
 ## Handoff report
