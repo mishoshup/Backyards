@@ -37,9 +37,9 @@ pub fn load_review_context(
     })
 }
 
-pub fn run_both_reviewers(
-    context: &ReviewContext<'_>,
-) -> Result<Vec<(ReviewerMode, ValidationOutcome)>, GateError> {
+pub type ReviewerResult = (ReviewerMode, Result<ValidationOutcome, GateError>);
+
+pub fn run_both_reviewers(context: &ReviewContext<'_>) -> Vec<ReviewerResult> {
     std::thread::scope(|scope| {
         let workers: Vec<_> = ALL_REVIEWER_MODES
             .iter()
@@ -48,7 +48,7 @@ pub fn run_both_reviewers(
         ALL_REVIEWER_MODES
             .iter()
             .zip(workers)
-            .map(|(mode, worker)| join_worker(worker).map(|outcome| (*mode, outcome)))
+            .map(|(mode, worker)| (*mode, join_worker(worker)))
             .collect()
     })
 }

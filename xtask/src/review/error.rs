@@ -32,6 +32,8 @@ pub enum ReviewError {
     InvalidAnswer { reason: String },
     #[error("malformed model stream event: {reason}")]
     MalformedStreamEvent { reason: String },
+    #[error("{details}")]
+    ReviewersFailed { details: String },
     #[error("environment variable {name} is unusable: {source}")]
     MissingEnvironment {
         name: &'static str,
@@ -57,6 +59,7 @@ impl ReviewError {
             | Self::MalformedStreamEvent { .. }
             | Self::ProgressWrite { .. }
             | Self::UnknownStatusState { .. }
+            | Self::ReviewersFailed { .. }
             | Self::MissingEnvironment { .. } => false,
         }
     }
