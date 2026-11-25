@@ -16,9 +16,20 @@ build_request_body() {
     '{model: $model, messages: $messages[0], tools: $tools[0], tool_choice: $choice}'
 }
 
-call_model() {
-  build_request_body "$1" "$2" | curl -fsS --max-time "${request_timeout_seconds}" "${base_url}/chat/completions" \
+post_chat_completion() {
+  curl -sS --max-time "${request_timeout_seconds}" -w '\n%{http_code}' "${base_url}/chat/completions" \
     -H "Authorization: Bearer ${DEEPSEEK_API_KEY}" -H "Content-Type: application/json" --data-binary @-
+}
+
+call_model() {
+  local reply status
+  reply=$(build_request_body "$1" "$2" | post_chat_completion)
+  status=${reply##*$'\n'}
+  if [ "${status}" != 200 ]; then
+    echo "review: DeepSeek returned HTTP ${status}: ${reply%$'\n'*}" >&2
+    return 1
+  fi
+  printf '%s\n' "${reply%$'\n'*}"
 }
 
 append_message() {
