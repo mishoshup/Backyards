@@ -28,7 +28,16 @@ run_policy_check() {
   scripts/check-architecture.sh
 }
 
+run_workflow_lint() {
+  if command -v actionlint >/dev/null 2>&1; then
+    actionlint .github/workflows/*.yml
+  else
+    echo "actionlint is not installed; workflow lint skipped" >&2
+  fi
+}
+
 main() {
+  run_workflow_lint
   run_policy_check
   if [ -d crates ] && [ -n "$(ls -A crates 2>/dev/null)" ]; then
     run_formatting_check

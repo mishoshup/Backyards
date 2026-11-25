@@ -23,5 +23,7 @@ jobs:
       - uses: cargo-bins/cargo-binstall@main
       - name: Install cargo-deny
         run: cargo binstall --no-confirm --locked cargo-deny
+      - name: Install actionlint
+        run: brew install actionlint
       - name: Gate
         run: scripts/check.sh

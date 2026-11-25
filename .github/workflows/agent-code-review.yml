@@ -92,7 +92,7 @@ jobs:
 
       - name: Record that no reviewable files changed
         if: steps.skip.outputs.skip != 'true' && steps.filter.outputs.code != 'true'
-        run: .github/scripts/review/record-review-complete.sh "${{ steps.skip.outputs.head_sha }}" "${STATUS_CONTEXT}" "Skipped: no reviewable files changed"
+        run: .github/scripts/review/record-review-complete.sh "${{ steps.skip.outputs.head_sha }}" "${STATUS_CONTEXT}" "Skipped - no reviewable files changed"
 
       - name: Remove the in-progress indicator
         if: always() && steps.skip.outputs.skip != 'true'
