@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# shellcheck source=/dev/null
+source "$(dirname "$0")/review-constants.sh"
+
 readonly rules_directory="${1:?rules directory required}"
 readonly output_file="${2:?output file required}"
 
@@ -8,7 +11,7 @@ collect_rule_identifiers() {
   local rule_file
   for rule_file in "${rules_directory}"/[!_]*.md; do
     [[ -f "${rule_file}" ]] || continue
-    grep -m1 '^ruleId:' "${rule_file}" | grep -oE '[A-Z]+(-[A-Z]+)*-[0-9]+' \
+    grep -m1 '^ruleId:' "${rule_file}" | grep -oE "${RULE_PATTERN}" \
       || { echo "rule file ${rule_file} has no ruleId" >&2; exit 1; }
   done
 }

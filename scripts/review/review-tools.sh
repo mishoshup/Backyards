@@ -15,32 +15,37 @@ limit_output() {
 
 resolve_inside_workspace() {
   local resolved
-  resolved=$(realpath -- "$1" 2>/dev/null) || return 1
-  [[ "${resolved}" == "${PWD}" || "${resolved}" == "${PWD}"/* ]] || return 1
+  resolved=$(realpath -- "$1" 2>&1) || { echo "error: cannot resolve path: ${resolved}"; return 1; }
+  [[ "${resolved}" == "${PWD}" || "${resolved}" == "${PWD}"/* ]] || { echo "error: path is outside the repository"; return 1; }
   printf '%s\n' "${resolved}"
 }
 
-tool_read_file() {
+read_repository_file() {
   local arguments="$1" path start_line end_line resolved
   path=$(jq -r '.path' <<<"${arguments}")
   start_line=$(jq -r '.start_line // 1' <<<"${arguments}")
   end_line=$(jq -r --argjson fallback "${MAXIMUM_READ_LINE}" '.end_line // $fallback' <<<"${arguments}")
-  resolved=$(resolve_inside_workspace "${path}") || { echo "error: path is outside the repository or missing"; return 0; }
+  resolved=$(resolve_inside_workspace "${path}") || { echo "${resolved}"; return 0; }
   [[ -f "${resolved}" ]] || { echo "error: not a file"; return 0; }
   awk -v from="${start_line}" -v to="${end_line}" 'NR >= from && NR <= to { printf "%d\t%s\n", NR, $0 }' "${resolved}" | limit_output
 }
 
-tool_list_files() {
-  local pattern
-  pattern=$(jq -r '.glob' <<<"$1")
-  git ls-files --cached --others --exclude-standard | grep -E "$(sed 's/[.]/\\./g; s/\*/.*/g' <<<"${pattern}")" | head -n "${MAXIMUM_LISTED_FILES}"
+convert_glob_to_pattern() {
+  local double_star_marker='@@DOUBLE_STAR@@'
+  printf '^%s$\n' "$(sed -E "s/[][+^\${}()|.\\\\]/\\\\&/g; s/\*\*/${double_star_marker}/g; s/\*/[^\/]*/g; s/\?/[^\/]/g; s/${double_star_marker}/.*/g" <<<"$1")"
 }
 
-tool_grep() {
+list_repository_files() {
+  local pattern
+  pattern=$(jq -r '.glob' <<<"$1")
+  git ls-files --cached --others --exclude-standard | grep -E "$(convert_glob_to_pattern "${pattern}")" | head -n "${MAXIMUM_LISTED_FILES}"
+}
+
+search_repository() {
   local arguments="$1" pattern path resolved
   pattern=$(jq -r '.pattern' <<<"${arguments}")
   path=$(jq -r '.path // "."' <<<"${arguments}")
-  resolved=$(resolve_inside_workspace "${path}") || { echo "error: path is outside the repository or missing"; return 0; }
+  resolved=$(resolve_inside_workspace "${path}") || { echo "${resolved}"; return 0; }
   local matches status=0
   matches=$(grep -rnIE --exclude-dir=.git --exclude-dir=target -- "${pattern}" "${resolved}" 2>&1) || status=$?
   if [ "${status}" -gt 1 ]; then
@@ -51,7 +56,7 @@ tool_grep() {
   printf "%s\n" "${matches//${workspace_prefix}/}" | head -n "${MAXIMUM_GREP_MATCHES}" | limit_output
 }
 
-tool_fetch_url() {
+fetch_documentation_page() {
   local url host
   url=$(jq -r '.url' <<<"$1")
   [[ "${url}" =~ ^https://([^/:]+)(/|$) ]] || { echo "error: only https urls are allowed"; return 0; }
@@ -63,10 +68,10 @@ tool_fetch_url() {
 
 run_tool() {
   case "$1" in
-    read_file) tool_read_file "$2" ;;
-    list_files) tool_list_files "$2" ;;
-    grep) tool_grep "$2" ;;
-    fetch_url) tool_fetch_url "$2" ;;
+    read_file) read_repository_file "$2" ;;
+    list_files) list_repository_files "$2" ;;
+    grep) search_repository "$2" ;;
+    fetch_url) fetch_documentation_page "$2" ;;
     *) echo "error: unknown tool $1" ;;
   esac
 }

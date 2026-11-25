@@ -10,7 +10,6 @@ readonly comment_body="${3:?body required}"
 readonly line_number="${4:?line required}"
 readonly review_mode="${5:?mode required}"
 readonly declared_rule="${6:-}"
-readonly rule_pattern='[A-Z]+(-[A-Z]+)*-[0-9]+'
 
 validate_arguments() {
   [[ "${pull_request_number}" =~ ^[0-9]+$ ]] || { echo "pull request number must be an integer" >&2; exit 1; }
@@ -21,7 +20,7 @@ validate_rule_reference() {
   [[ "${review_mode}" == "inline" ]] || return 0
   local rule="${declared_rule}"
   if [[ -z "${rule}" ]]; then
-    rule=$(grep -oE "${rule_pattern}" <<<"${comment_body}" | head -1 || true)
+    rule=$(grep -oE "${RULE_PATTERN}" <<<"${comment_body}" | head -1 || true)
   fi
   [[ -n "${rule}" ]] || { echo "comment rejected: missing rule reference" >&2; exit 1; }
   grep -qxF "${rule}" "${ALLOWED_RULES_FILE:?allowed rules file required}" \

@@ -23,11 +23,11 @@ build_request_body() {
 }
 
 send_streaming_request() {
-  post_to_deepseek -fsSN --max-time "${request_timeout_seconds}"
+  post_to_deepseek -sSN --fail-with-body --max-time "${request_timeout_seconds}"
 }
 
 tag_stream_events() {
-  sed -u -n 's/^data: //p' | jq --unbuffered -Rr '
+  tee >(sed -n '/^data: /!{/./p;}' >&2) | sed -u -n 's/^data: //p' | jq --unbuffered -Rr '
     select(. != "[DONE]") | fromjson | .choices[0].delta
     | if (.reasoning_content // "") != "" then "R"
       elif (.content // "") != "" then "C" + (.content | @json)

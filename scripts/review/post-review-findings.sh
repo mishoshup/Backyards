@@ -8,12 +8,12 @@ source .github/scripts/review/review-constants.sh
 readonly review_mode="${1:?mode required}"
 readonly MAXIMUM_POSTED_FINDINGS=30
 
-finding_noun() {
+select_finding_noun() {
   if [ "$1" -eq 1 ]; then echo finding; else echo findings; fi
 }
 
 describe_count() {
-  if [ "$1" -eq 0 ]; then echo "no findings, all ok"; else echo "$1 $(finding_noun "$1")"; fi
+  if [ "$1" -eq 0 ]; then echo "no findings, all ok"; else echo "$1 $(select_finding_noun "$1")"; fi
 }
 
 record_result() {
@@ -51,6 +51,32 @@ post_summary_comment() {
   gh pr comment "${PULL_REQUEST_NUMBER}" --repo "${REPOSITORY}" --body "${body}"
 }
 
+first_violations() {
+  jq --argjson cap "${MAXIMUM_POSTED_FINDINGS}" '{violations: .violations[:$cap]}' <<<"$1"
+}
+
+remaining_violations() {
+  jq --argjson cap "${MAXIMUM_POSTED_FINDINGS}" '{violations: .violations[$cap:]}' <<<"$1"
+}
+
+join_violations() {
+  jq -s '{violations: (.[0].violations + .[1].violations)}' <(echo "$1") <(echo "$2")
+}
+
+post_findings() {
+  local inline_json overflow_json summary_json
+  inline_json=$(first_violations "$1")
+  overflow_json=$(remaining_violations "$1")
+  if post_each_violation "${inline_json}"; then
+    summary_json="${overflow_json}"
+  else
+    summary_json=$(join_violations "${inline_json}" "${overflow_json}")
+  fi
+  if [[ "$(jq '.violations | length' <<<"${summary_json}")" -gt 0 ]]; then
+    post_summary_comment "${summary_json}"
+  fi
+}
+
 main() {
   local review_json
   review_json=$(cat)
@@ -63,8 +89,7 @@ main() {
   fi
   : "${REVIEW_HEAD_SHA:?reviewed commit required}"
   export REVIEW_HEAD_SHA
-  review_json=$(jq --argjson cap "${MAXIMUM_POSTED_FINDINGS}" '.violations |= .[:$cap]' <<<"${review_json}")
-  post_each_violation "${review_json}" || post_summary_comment "${review_json}"
+  post_findings "${review_json}"
 }
 
 main "$@"

@@ -29,15 +29,17 @@ run_policy_check() {
 }
 
 run_workflow_lint() {
-  if command -v actionlint >/dev/null 2>&1; then
-    actionlint .github/workflows/*.yml
-  else
-    echo "actionlint is not installed; workflow lint skipped" >&2
-  fi
+  command -v actionlint >/dev/null 2>&1 || { echo "actionlint is required; install it with brew install actionlint" >&2; exit 1; }
+  actionlint .github/workflows/*.yml
+}
+
+run_review_script_tests() {
+  scripts/test-review-scripts.sh
 }
 
 main() {
   run_workflow_lint
+  run_review_script_tests
   run_policy_check
   if [ -d crates ] && [ -n "$(ls -A crates 2>/dev/null)" ]; then
     run_formatting_check
