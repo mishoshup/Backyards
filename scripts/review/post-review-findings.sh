@@ -7,6 +7,7 @@ source .github/scripts/review/review-constants.sh
 
 readonly review_mode="${1:?mode required}"
 readonly MAXIMUM_POSTED_FINDINGS=30
+readonly MAXIMUM_SUMMARY_FINDINGS=100
 
 select_finding_noun() {
   if [ "$1" -eq 1 ]; then echo finding; else echo findings; fi
@@ -34,20 +35,22 @@ reject_missing_answer() {
   exit 1
 }
 
+failed_violations=()
+
 post_each_violation() {
-  local violation has_failed=0
+  local violation
   while IFS= read -r violation; do
     .github/scripts/review/create-inline-comment.sh "${PULL_REQUEST_NUMBER}" \
       "$(jq -r .path <<<"${violation}")" "$(jq -r .body <<<"${violation}")" \
-      "$(jq -r .line <<<"${violation}")" "${review_mode}" "$(jq -r '.ruleId // ""' <<<"${violation}")" || has_failed=1
+      "$(jq -r .line <<<"${violation}")" "${review_mode}" "$(jq -r '.ruleId // ""' <<<"${violation}")" \
+      || failed_violations+=("${violation}")
   done < <(jq -c '.violations[]' <<<"$1")
-  return "${has_failed}"
 }
 
 post_summary_comment() {
   local body
-  body=$(jq -r --arg mode "${review_mode}" \
-    '"Automated " + $mode + " review: some comments could not be placed inline.\n\n" + ([.violations[] | "- `" + .path + ":" + (.line | tostring) + "` " + .body] | join("\n"))' <<<"$1")
+  body=$(jq -r --arg mode "${review_mode}" --argjson cap "${MAXIMUM_SUMMARY_FINDINGS}" \
+    '"Automated " + $mode + " review: some comments could not be placed inline.\n\n" + ([.violations[:$cap][] | "- `" + .path + ":" + (.line | tostring) + "` " + .body] | join("\n")) + (if (.violations | length) > $cap then "\n\n" + ((.violations | length) - $cap | tostring) + " further findings omitted." else "" end)' <<<"$1")
   gh pr comment "${PULL_REQUEST_NUMBER}" --repo "${REPOSITORY}" --body "${body}"
 }
 
@@ -59,22 +62,17 @@ remaining_violations() {
   jq --argjson cap "${MAXIMUM_POSTED_FINDINGS}" '{violations: .violations[$cap:]}' <<<"$1"
 }
 
-join_violations() {
-  jq -s '{violations: (.[0].violations + .[1].violations)}' <(echo "$1") <(echo "$2")
+summarize_unposted_violations() {
+  local failed_json
+  failed_json=$(printf '%s\n' "${failed_violations[@]:-}" | jq -s --argjson overflow "$1" 'map(select(. != null)) as $failed | {violations: ($failed + $overflow.violations)}')
+  if [[ "$(jq '.violations | length' <<<"${failed_json}")" -gt 0 ]]; then
+    post_summary_comment "${failed_json}"
+  fi
 }
 
 post_findings() {
-  local inline_json overflow_json summary_json
-  inline_json=$(first_violations "$1")
-  overflow_json=$(remaining_violations "$1")
-  if post_each_violation "${inline_json}"; then
-    summary_json="${overflow_json}"
-  else
-    summary_json=$(join_violations "${inline_json}" "${overflow_json}")
-  fi
-  if [[ "$(jq '.violations | length' <<<"${summary_json}")" -gt 0 ]]; then
-    post_summary_comment "${summary_json}"
-  fi
+  post_each_violation "$(first_violations "$1")"
+  summarize_unposted_violations "$(remaining_violations "$1")"
 }
 
 main() {

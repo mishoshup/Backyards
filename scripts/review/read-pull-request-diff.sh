@@ -4,9 +4,14 @@ set -euo pipefail
 maximum_diff_bytes=600000
 diff_file=""
 
+read_base_branch() {
+  gh pr view "${PULL_REQUEST_NUMBER}" --repo "${REPOSITORY}" --json baseRefName --jq .baseRefName
+}
+
 fetch_diff() {
   if [ -n "${PULL_REQUEST_NUMBER:-}" ]; then
-    gh pr diff "${PULL_REQUEST_NUMBER}" --repo "${REPOSITORY}"
+    gh api "repos/${REPOSITORY}/compare/$(read_base_branch)...${REVIEW_HEAD_SHA:?reviewed commit required}" \
+      -H "Accept: application/vnd.github.diff"
   else
     git diff "$(git merge-base "${1:-origin/main}" HEAD)"
     diff_untracked_files

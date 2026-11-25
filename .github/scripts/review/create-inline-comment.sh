@@ -14,6 +14,7 @@ readonly declared_rule="${6:-}"
 validate_arguments() {
   [[ "${pull_request_number}" =~ ^[0-9]+$ ]] || { echo "pull request number must be an integer" >&2; exit 1; }
   [[ "${line_number}" =~ ^[0-9]+$ ]] || { echo "line must be an integer" >&2; exit 1; }
+  [[ "${review_mode}" == "inline" || "${review_mode}" == "holistic" ]] || { echo "mode must be inline or holistic" >&2; exit 1; }
 }
 
 validate_rule_reference() {
@@ -23,7 +24,8 @@ validate_rule_reference() {
     rule=$(grep -oE "${RULE_PATTERN}" <<<"${comment_body}" | head -1 || true)
   fi
   [[ -n "${rule}" ]] || { echo "comment rejected: missing rule reference" >&2; exit 1; }
-  grep -qxF "${rule}" "${ALLOWED_RULES_FILE:?allowed rules file required}" \
+  [[ -r "${ALLOWED_RULES_FILE:?allowed rules file required}" ]] || { echo "allowed rules file is not readable: ${ALLOWED_RULES_FILE}" >&2; exit 1; }
+  grep -qxF "${rule}" "${ALLOWED_RULES_FILE}" \
     || { echo "comment rejected: rule ${rule} is not in the allowed list" >&2; exit 1; }
 }
 

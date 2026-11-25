@@ -50,7 +50,7 @@ jobs:
       group: agent-review-${{ github.repository }}-${{ github.event.pull_request.number || github.event.issue.number }}
       cancel-in-progress: false
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 45
     env:
       PULL_REQUEST_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
       REPOSITORY: ${{ github.repository }}

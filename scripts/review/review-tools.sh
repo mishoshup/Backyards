@@ -10,7 +10,24 @@ readonly FETCH_TIMEOUT_SECONDS=20
 readonly ALLOWED_FETCH_HOSTS_FILE="${BASH_SOURCE[0]%/*}/allowed-fetch-hosts.txt"
 
 limit_output() {
-  head -c "${MAXIMUM_TOOL_OUTPUT_BYTES}"
+  local text
+  text=$(head -c "$((MAXIMUM_TOOL_OUTPUT_BYTES + 1))")
+  if [ "${#text}" -gt "${MAXIMUM_TOOL_OUTPUT_BYTES}" ]; then
+    printf '%s\n[output truncated after %s bytes]\n' "${text:0:MAXIMUM_TOOL_OUTPUT_BYTES}" "${MAXIMUM_TOOL_OUTPUT_BYTES}"
+  else
+    printf '%s\n' "${text}"
+  fi
+}
+
+limit_lines() {
+  local maximum_lines="$1" lines
+  lines=$(head -n "$((maximum_lines + 1))")
+  if [ "$(wc -l <<<"${lines}")" -gt "${maximum_lines}" ]; then
+    head -n "${maximum_lines}" <<<"${lines}"
+    echo "[output truncated after ${maximum_lines} lines]"
+  else
+    printf '%s\n' "${lines}"
+  fi
 }
 
 resolve_inside_workspace() {
@@ -38,7 +55,7 @@ convert_glob_to_pattern() {
 list_repository_files() {
   local pattern
   pattern=$(jq -r '.glob' <<<"$1")
-  git ls-files --cached --others --exclude-standard | grep -E "$(convert_glob_to_pattern "${pattern}")" | head -n "${MAXIMUM_LISTED_FILES}"
+  git ls-files --cached --others --exclude-standard | grep -E "$(convert_glob_to_pattern "${pattern}")" | limit_lines "${MAXIMUM_LISTED_FILES}"
 }
 
 search_repository() {
@@ -46,14 +63,15 @@ search_repository() {
   pattern=$(jq -r '.pattern' <<<"${arguments}")
   path=$(jq -r '.path // "."' <<<"${arguments}")
   resolved=$(resolve_inside_workspace "${path}") || { echo "${resolved}"; return 0; }
-  local matches status=0
-  matches=$(grep -rnIE --exclude-dir=.git --exclude-dir=target -- "${pattern}" "${resolved}" 2>&1) || status=$?
+  local pattern_check status=0
+  pattern_check=$(grep -E -- "${pattern}" /dev/null 2>&1) || status=$?
   if [ "${status}" -gt 1 ]; then
-    echo "error: grep failed: ${matches}"
+    echo "error: grep failed: ${pattern_check}"
     return 0
   fi
   local workspace_prefix="${PWD}/"
-  printf "%s\n" "${matches//${workspace_prefix}/}" | head -n "${MAXIMUM_GREP_MATCHES}" | limit_output
+  grep -rnIE --exclude-dir=.git --exclude-dir=target -- "${pattern}" "${resolved}" 2>&1 \
+    | head -n "$((MAXIMUM_GREP_MATCHES + 1))" | sed "s#${workspace_prefix}##" | limit_lines "${MAXIMUM_GREP_MATCHES}" | limit_output
 }
 
 fetch_documentation_page() {

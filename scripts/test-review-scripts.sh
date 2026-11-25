@@ -26,7 +26,7 @@ write_fake_gh() {
   mkdir -p "${scratch_directory}/bin"
   cat > "${scratch_directory}/bin/gh" <<FAKE
 #!/usr/bin/env bash
-if [[ "\$1" == "api" ]]; then exit "\${FAKE_GH_API_STATUS:-0}"; fi
+if [[ "\$1" == "api" ]]; then cat > /dev/null; exit "\${FAKE_GH_API_STATUS:-0}"; fi
 if [[ "\$1" == "pr" ]]; then printf '%s\\n' "\$*" >> "${scratch_directory}/summary.log"; fi
 FAKE
   chmod +x "${scratch_directory}/bin/gh"
@@ -53,6 +53,15 @@ test_unknown_rule_is_rejected() {
     .github/scripts/review/create-inline-comment.sh 1 a.rs "body" 1 inline NOPE-99 2>/dev/null; then
     fail_test "unknown rule was accepted"
   fi
+  local message
+  message=$(ALLOWED_RULES_FILE="${scratch_directory}/rules.txt" REVIEW_HEAD_SHA=abcdef1234 GITHUB_REPOSITORY=o/r \
+    .github/scripts/review/create-inline-comment.sh 1 a.rs "body" 1 inline NOPE-99 2>&1 || true)
+  grep -q "not in the allowed list" <<<"${message}" || fail_test "rejection did not name the allowlist"
+}
+
+test_known_rule_is_accepted() {
+  ALLOWED_RULES_FILE="${scratch_directory}/rules.txt" REVIEW_HEAD_SHA=abcdef1234 GITHUB_REPOSITORY=o/r PATH="${scratch_directory}/bin:${PATH}" \
+    .github/scripts/review/create-inline-comment.sh 1 a.rs "body" 1 inline ERRORS-01 || fail_test "known rule was rejected"
 }
 
 test_glob_conversion_is_anchored_and_segment_aware() {
@@ -91,6 +100,7 @@ main() {
   write_fake_gh
   test_allowed_rules_are_extracted
   test_unknown_rule_is_rejected
+  test_known_rule_is_accepted
   test_glob_conversion_is_anchored_and_segment_aware
   test_zero_findings_records_all_ok
   test_missing_answer_is_recorded

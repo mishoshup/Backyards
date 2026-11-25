@@ -61,7 +61,9 @@ run_tool_call() {
   name=$(jq -r '.function.name' <<<"${call_json}")
   arguments=$(jq -r '.function.arguments' <<<"${call_json}")
   echo "review: holistic tool ${name} ${arguments:0:MAXIMUM_LOGGED_ARGUMENT_LENGTH}" >&2
-  output=$(run_tool "${name}" "${arguments}" 2>&1 || true)
+  local status=0
+  output=$(run_tool "${name}" "${arguments}" 2>&1) || status=$?
+  [ "${status}" -eq 0 ] || output="error: tool exited with status ${status}: ${output}"
   jq -n --arg id "$(jq -r '.id' <<<"${call_json}")" --arg content "${output}" '{role: "tool", tool_call_id: $id, content: $content}'
 }
 

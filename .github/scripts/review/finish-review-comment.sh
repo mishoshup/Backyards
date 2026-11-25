@@ -27,9 +27,9 @@ update_comment() {
 }
 
 react_to_outcome() {
-  .github/scripts/review/remove-comment-reaction.sh "${comment_id}" "eyes" "github-actions[bot]"
+  .github/scripts/review/remove-comment-reaction.sh "${comment_id}" "eyes" "github-actions[bot]" || echo "warning: could not remove the in-progress reaction" >&2
   if [[ "${job_status}" == "success" && -f "$(review_result_path inline)" && -f "$(review_result_path holistic)" && "$(count_findings)" -eq 0 ]]; then
-    .github/scripts/review/add-comment-reaction.sh "${comment_id}" "+1"
+    .github/scripts/review/add-comment-reaction.sh "${comment_id}" "+1" || echo "warning: could not add the approval reaction" >&2
   fi
 }
 
