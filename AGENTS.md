@@ -25,7 +25,7 @@ When goals conflict, security takes precedence over speed, and speed takes prece
 1. BoxLite is the only garden backend in the first version. Other backends are out of scope and remain behind the backend port.
 2. The command, the package and the application crates share the name `backyards`.
 3. Interfaces are delivered in this order: CLI, MCP server, terminal UI, desktop application. Each is a thin front end over the domain crates and contains no business logic. The frameworks are clap (CLI), rmcp (MCP), ratatui (terminal UI) and GPUI through the `gpui-kit` crate (desktop, without `gpui-shell`).
-4. Every Rust tool must be installed with `cargo binstall` (prebuilt binaries). Tools must not be compiled from source, locally or in CI. `scripts/check-policy.sh` enforces this requirement.
+4. Every Rust tool must be installed with `cargo binstall` (prebuilt binaries). Tools must not be compiled from source, locally or in CI. `cargo xtask policy` enforces this requirement.
 5. All dependencies and tools must be open source. The system must not require a paid tool or a network service that the user does not operate.
 
 ## 3. Architecture
@@ -49,7 +49,7 @@ The code is arranged in four layers. A crate may depend only on a layer below it
 2. The domain layer defines the ports. The infrastructure layer implements them (dependency inversion). Domain code must not name an infrastructure crate. An infrastructure crate may depend on the single domain crate whose port it implements.
 3. Each domain crate is a self-contained module. It must build, test and run without any other domain crate, and it owns its own manifest section.
 4. Internal crates omit the product prefix and are not published. Only the application crates carry the prefix.
-5. `scripts/check-architecture.sh` fails the gate when a crate imports a crate that its layer does not permit.
+5. `cargo xtask architecture` fails the gate when a crate imports a crate that its layer does not permit.
 
 ### 3.3 Reconciliation model
 
@@ -119,11 +119,12 @@ Documentation, comments, commit messages and reports use plain, concise, declara
 
 ## 9. Quality gates
 
-1. `scripts/check.sh` must pass before every commit. It runs formatting, Clippy with warnings denied, tests, dependency checks (cargo-deny), and the policy and architecture checks. The pre-commit hook and CI run the same command, so a local result and a remote result are equivalent.
+1. `cargo xtask check` must pass before every commit. It runs formatting, Clippy with warnings denied, tests, dependency checks (cargo-deny), and the policy and architecture checks. The pre-commit hook and CI run the same command, so a local result and a remote result are equivalent.
 2. After each edit, `cargo clippy --workspace --all-targets` must be run for the affected crates.
 3. Tests that start a real garden run only on macOS with Apple silicon and remove every garden they create.
 4. Test weight, in descending order: integration tests against real behavior, then unit tests.
-5. Planned gates, to be added when the crates exist: diff coverage of changed lines (cargo-llvm-cov), a generated JSON Schema compared with the checked-in contract, and a release-build startup check.
+5. Repository tooling is written in Rust in the `xtask` crate and invoked as `cargo xtask <task>`. Product crates must not depend on it, and the architecture check enforces that.
+6. Planned gates, to be added when the crates exist: diff coverage of changed lines (cargo-llvm-cov), a generated JSON Schema compared with the checked-in contract, and a release-build startup check.
 
 ## 10. Version control
 

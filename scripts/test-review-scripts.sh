@@ -99,7 +99,7 @@ test_overflow_findings_are_listed_in_summary() {
 
 test_reviewable_paths_include_policy_files() {
   local path
-  for path in crates/a/src/lib.rs clippy.toml deny.toml rust-toolchain.toml AGENTS.md scripts/check.sh .github/workflows/ci.yml; do
+  for path in crates/a/src/lib.rs clippy.toml deny.toml rust-toolchain.toml AGENTS.md scripts/check-shell.sh .github/workflows/ci.yml; do
     printf '%s\n' "${path}" > "${scratch_directory}/changed.txt"
     .github/scripts/review/select-reviewable-paths.sh "${scratch_directory}/changed.txt" || fail_test "${path} was not selected for review"
   done

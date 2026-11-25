@@ -1,6 +1,6 @@
 ---
 ruleId: ASYNC-01
-enforcedBy: scripts/check-architecture.sh (no `#[tokio::main]` in library crates)
+enforcedBy: cargo xtask architecture (no `#[tokio::main]` in library crates)
 source: Tokio documentation (runtime in the binary; #[tokio::main])
 ---
 

@@ -10,7 +10,7 @@ The loop runs until the pull request is clean, then reports to the owner and mer
 ## Loop
 
 1. Develop on a branch named `<type>/<short-description>` created from an up-to-date `main`.
-2. Run `scripts/check.sh` and the local review (`scripts/review/run-local-review.sh`). Fix every finding that holds against the source.
+2. Run `cargo xtask check` and the local review (`scripts/review/run-local-review.sh`). Fix every finding that holds against the source.
 3. Commit with the subject `<type>(<scope>): <subject>`, at most 72 characters, no trailers. Push with `git push origin HEAD:refs/heads/<branch>`.
 4. Wait for the agent review of the pushed commit. Read the checks with `gh pr checks <number>` and the review threads with the query below.
 5. For every unresolved thread, verify the claim against the source, then:
@@ -18,10 +18,10 @@ The loop runs until the pull request is clean, then reports to the owner and mer
    - If it does not hold, reply with the evidence and the source checked.
 6. Resolve each thread after replying. Push the fixes and return to step 4.
 7. Stop looping when all of these hold for the head commit:
-   - `scripts/check.sh` passes locally and every required check passes on the pull request.
+   - `cargo xtask check` passes locally and every required check passes on the pull request.
    - The agent review status for the head commit is `success` and posted no new finding.
    - No review thread is unresolved.
-   - The pull request is not a draft and its title matches `scripts/check-pull-request-naming.sh`.
+   - The pull request is not a draft and its title matches `cargo xtask pull-request-naming`.
 8. Re-read the final diff once, confirm the description matches it, and report to the owner what was verified and what was declined. Merge with `gh pr merge <number> --squash --delete-branch` only after the owner approves.
 
 ## Review threads

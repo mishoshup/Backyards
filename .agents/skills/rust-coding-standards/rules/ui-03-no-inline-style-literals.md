@@ -1,6 +1,6 @@
 ---
 ruleId: UI-03
-enforcedBy: scripts/check-architecture.sh (no color or pixel literals outside `theme`)
+enforcedBy: cargo xtask architecture (no color or pixel literals outside `theme`)
 source: Project convention (general practice, enforced by review)
 ---
 

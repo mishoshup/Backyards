@@ -26,4 +26,4 @@ jobs:
       - name: Install actionlint and shellcheck
         run: brew install actionlint shellcheck
       - name: Gate
-        run: scripts/check.sh
+        run: cargo xtask check

@@ -1,0 +1,34 @@
+use std::path::PathBuf;
+use std::process::ExitStatus;
+
+#[derive(Debug, thiserror::Error)]
+pub enum GateError {
+    #[error("cannot read {path}: {source}")]
+    ReadFile {
+        path: PathBuf,
+        source: std::io::Error,
+    },
+    #[error("cannot list {path}: {source}")]
+    ReadDirectory {
+        path: PathBuf,
+        source: std::io::Error,
+    },
+    #[error("cannot run {command}: {source}")]
+    RunCommand {
+        command: String,
+        source: std::io::Error,
+    },
+    #[error("{command} exited with {status}")]
+    CommandFailed { command: String, status: ExitStatus },
+    #[error("git listed a path that is not valid UTF-8: {0}")]
+    NonUtf8Path(#[source] std::str::Utf8Error),
+    #[error("cannot write the report: {0}")]
+    WriteReport(#[source] std::io::Error),
+    #[error("invalid pattern {pattern}: {source}")]
+    InvalidPattern {
+        pattern: String,
+        source: regex::Error,
+    },
+    #[error("{area}: {count} violation(s)")]
+    Violations { area: &'static str, count: usize },
+}

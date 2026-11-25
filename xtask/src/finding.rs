@@ -1,0 +1,65 @@
+use std::io::Write;
+
+use crate::error::GateError;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Severity {
+    Error,
+    Warning,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Finding {
+    pub area: &'static str,
+    pub severity: Severity,
+    pub message: String,
+}
+
+impl Finding {
+    #[must_use]
+    pub const fn error(area: &'static str, message: String) -> Self {
+        Self {
+            area,
+            severity: Severity::Error,
+            message,
+        }
+    }
+
+    #[must_use]
+    pub const fn warning(area: &'static str, message: String) -> Self {
+        Self {
+            area,
+            severity: Severity::Warning,
+            message,
+        }
+    }
+}
+
+#[must_use]
+pub fn count_errors(findings: &[Finding]) -> usize {
+    findings
+        .iter()
+        .filter(|finding| finding.severity == Severity::Error)
+        .count()
+}
+
+pub fn write_report_line(message: &str) -> Result<(), GateError> {
+    writeln!(std::io::stderr().lock(), "{message}").map_err(GateError::WriteReport)
+}
+
+pub fn report_findings(area: &'static str, findings: &[Finding]) -> Result<(), GateError> {
+    for finding in findings {
+        write_report_line(&format_finding(finding))?;
+    }
+    match count_errors(findings) {
+        0 => Ok(()),
+        count => Err(GateError::Violations { area, count }),
+    }
+}
+
+fn format_finding(finding: &Finding) -> String {
+    match finding.severity {
+        Severity::Error => format!("{}: {}", finding.area, finding.message),
+        Severity::Warning => format!("{}: warning: {}", finding.area, finding.message),
+    }
+}

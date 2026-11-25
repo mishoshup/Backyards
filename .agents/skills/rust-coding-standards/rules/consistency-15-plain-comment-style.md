@@ -1,6 +1,6 @@
 ---
 ruleId: CONSISTENCY-15
-enforcedBy: scripts/check-policy.sh (no em dashes); review
+enforcedBy: cargo xtask policy (no em dashes); review
 source: Project convention (general practice, enforced by review)
 ---
 

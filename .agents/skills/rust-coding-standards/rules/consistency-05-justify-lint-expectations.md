@@ -1,6 +1,6 @@
 ---
 ruleId: CONSISTENCY-05
-enforcedBy: clippy::allow_attributes, allow_attributes_without_reason; scripts/check-policy.sh
+enforcedBy: clippy::allow_attributes, allow_attributes_without_reason; cargo xtask policy
 source: Clippy lint list (rust-lang.github.io/rust-clippy): allow_attributes, allow_attributes_without_reason; Rust reference (lint reasons, RFC 2383)
 ---
 
