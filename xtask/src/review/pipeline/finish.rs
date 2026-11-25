@@ -4,6 +4,8 @@ use crate::review::github::{BOT_LOGIN, GitHub, ProgressComment, StatusState, Sta
 use crate::review::pipeline::options::ReviewRun;
 use crate::review::post::{DroppedFinding, ValidationOutcome};
 
+const MAXIMUM_LISTED_DROPPED: usize = 20;
+
 pub struct ReviewSummary {
     pub mode: ReviewerMode,
     pub accepted: usize,
@@ -18,9 +20,22 @@ pub fn summarize(outcomes: &[(ReviewerMode, ValidationOutcome)]) -> Vec<ReviewSu
             mode: *mode,
             accepted: outcome.accepted.len(),
             dropped: outcome.dropped.len(),
-            dropped_details: outcome.dropped.iter().map(describe_dropped).collect(),
+            dropped_details: describe_dropped_findings(&outcome.dropped),
         })
         .collect()
+}
+
+fn describe_dropped_findings(dropped: &[DroppedFinding]) -> Vec<String> {
+    let mut details: Vec<String> = dropped
+        .iter()
+        .take(MAXIMUM_LISTED_DROPPED)
+        .map(describe_dropped)
+        .collect();
+    let omitted = dropped.len().saturating_sub(MAXIMUM_LISTED_DROPPED);
+    if omitted > 0 {
+        details.push(format!("  - {omitted} further dropped findings not listed"));
+    }
+    details
 }
 
 fn describe_dropped(dropped: &DroppedFinding) -> String {

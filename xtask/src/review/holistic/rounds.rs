@@ -24,12 +24,27 @@ pub fn run_holistic_review(
         };
         let reply = client.complete(request, progress)?;
         if reply.tool_calls.is_empty() {
-            return parse_answer(&reply.content);
+            match parse_answer(&reply.content) {
+                Ok(answer) => return Ok(answer),
+                Err(error) if round < MAXIMUM_ROUNDS => {
+                    request_json_only(&mut messages, reply, &error);
+                }
+                Err(error) => return Err(error),
+            }
+            continue;
         }
         reject_tools_in_final_round(round)?;
         answer_tool_calls(runner, &mut messages, reply);
     }
     Err(round_limit_error())
+}
+
+fn request_json_only(messages: &mut Vec<ChatMessage>, reply: ModelReply, error: &ReviewError) {
+    messages.push(ChatMessage::new(Role::Assistant, reply.content));
+    messages.push(ChatMessage::new(
+        Role::User,
+        format!("The answer was rejected: {error}. Respond with the JSON object only."),
+    ));
 }
 
 fn announce_cap_if_near(messages: &mut Vec<ChatMessage>, round: usize) {

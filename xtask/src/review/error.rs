@@ -26,7 +26,7 @@ pub enum ReviewError {
     ProgressWrite { reason: String },
     #[error("model stream ended with finish reason {finish_reason}")]
     ModelTruncated { finish_reason: String },
-    #[error("model {part} exceeds {limit} bytes")]
+    #[error("model output over the {limit} byte limit in {part}")]
     ModelOutputTooLarge { part: &'static str, limit: usize },
     #[error("model returned an empty answer")]
     EmptyAnswer,

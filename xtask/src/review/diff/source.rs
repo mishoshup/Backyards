@@ -36,11 +36,11 @@ fn diff_untracked_files(
     let listing = capture_command(
         repository.root(),
         "git",
-        &["ls-files", "--others", "--exclude-standard"],
+        &["ls-files", "--others", "--exclude-standard", "-z"],
         &[SUCCESS_EXIT],
     )?;
     let mut combined = String::new();
-    for path in listing.lines() {
+    for path in listing.split('\0').filter(|path| !path.is_empty()) {
         if !is_binary_file(repository, path)? {
             reject_file_over_remaining_budget(repository, path, tracked_bytes + combined.len())?;
         }
@@ -73,7 +73,7 @@ fn reject_file_over_remaining_budget(
     path: &str,
     already_captured: usize,
 ) -> Result<(), GateError> {
-    let file_bytes = std::fs::metadata(repository.root().join(path))
+    let file_bytes = std::fs::symlink_metadata(repository.root().join(path))
         .map_err(|source| GateError::RunCommand {
             command: format!("read metadata of {path}"),
             source,

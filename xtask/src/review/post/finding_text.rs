@@ -1,4 +1,5 @@
 use crate::review::model::{Confidence, Violation};
+use crate::review::text::prefix_within_bytes;
 
 const MAXIMUM_FINDING_BODY_BYTES: usize = 2_000;
 const TRUNCATION_NOTICE: &str = " [truncated]";
@@ -16,9 +17,5 @@ fn truncate_at_character_boundary(text: &str, limit: usize) -> String {
     if text.len() <= limit {
         return text.to_owned();
     }
-    let mut end = limit;
-    while !text.is_char_boundary(end) {
-        end -= 1;
-    }
-    format!("{}{TRUNCATION_NOTICE}", &text[..end])
+    format!("{}{TRUNCATION_NOTICE}", prefix_within_bytes(text, limit))
 }

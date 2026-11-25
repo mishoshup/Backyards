@@ -24,13 +24,16 @@ pub fn build_summary_body(mode: ReviewerMode, violations: &[Violation]) -> Strin
 }
 
 fn keep_lines_within_budget(lines: impl Iterator<Item = String>) -> Vec<String> {
+    let mut kept = Vec::new();
     let mut used_bytes = 0;
-    lines
-        .take_while(|line| {
-            used_bytes += line.len() + 1;
-            used_bytes <= MAXIMUM_SUMMARY_BYTES
-        })
-        .collect()
+    for line in lines {
+        used_bytes += line.len() + 1;
+        if used_bytes > MAXIMUM_SUMMARY_BYTES {
+            break;
+        }
+        kept.push(line);
+    }
+    kept
 }
 
 fn describe_summary_line(violation: &Violation) -> String {

@@ -3,7 +3,7 @@ use regex::Regex;
 use crate::report::GateError;
 use crate::review::github::client::GitHub;
 
-const REVIEWABLE_PATTERN: &str = r"(\.rs$|(^|/)Cargo\.(toml|lock)$|^scripts/|^\.github/|^\.agents/|^\.claude/|^(clippy|deny|rustfmt)\.toml$|^rust-toolchain(\.toml)?$|(^|/)AGENTS\.md$)";
+const REVIEWABLE_PATTERN: &str = r"(\.rs$|(^|/)Cargo\.(toml|lock)$|^scripts/|^xtask/|^\.github/|^\.agents/|^\.claude/|^(clippy|deny|rustfmt)\.toml$|^rust-toolchain(\.toml)?$|(^|/)AGENTS\.md$)";
 
 pub fn select_reviewable_pattern() -> Result<Regex, GateError> {
     Regex::new(REVIEWABLE_PATTERN).map_err(|source| GateError::InvalidPattern {

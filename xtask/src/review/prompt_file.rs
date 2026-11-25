@@ -3,7 +3,7 @@ use std::os::unix::fs::OpenOptionsExt;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use crate::report::GateError;
+use crate::report::{GateError, write_report_line};
 use crate::review::ReviewerMode;
 
 const PROMPT_FILE_MODE: u32 = 0o600;
@@ -43,8 +43,17 @@ impl PromptFile {
 impl Drop for PromptFile {
     fn drop(&mut self) {
         if !self.is_removed {
-            drop(std::fs::remove_file(&self.path));
+            report_removal_failure(&self.path);
         }
+    }
+}
+
+fn report_removal_failure(path: &Path) {
+    if let Err(failure) = std::fs::remove_file(path) {
+        drop(write_report_line(&format!(
+            "could not remove {}: {failure}",
+            path.display()
+        )));
     }
 }
 
