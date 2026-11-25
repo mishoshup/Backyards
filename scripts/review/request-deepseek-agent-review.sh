@@ -21,7 +21,8 @@ render_tool_definitions() {
 
 build_request_body() {
   jq -n --arg model "${model}" --arg choice "$2" --slurpfile messages "$1" --argjson tools "${rendered_tool_definitions}" \
-    '{model: $model, messages: $messages[0], tools: $tools, tool_choice: $choice}'
+    '{model: $model, messages: $messages[0]}
+      + (if $choice == "none" then {response_format: {type: "json_object"}} else {tools: $tools, tool_choice: $choice} end)'
 }
 
 post_chat_completion() {
@@ -79,6 +80,10 @@ announce_remaining_rounds() {
   fi
 }
 
+log_unusable_answer() {
+  echo "review: holistic unusable answer: $(jq -r '.content // "(empty)"' <<<"$1" | head -c "${MAXIMUM_LOGGED_ARGUMENT_LENGTH}")" >&2
+}
+
 choose_tool_policy() {
   if (( $1 >= maximum_rounds )); then echo none; else echo auto; fi
 }
@@ -97,6 +102,7 @@ run_rounds() {
       printf '%s\n' "${result}"
       return 0
     else
+      log_unusable_answer "${assistant_message}"
       append_message "${messages_file}" '{"role":"user","content":"Respond with the JSON object only."}'
     fi
   done
