@@ -1,0 +1,13 @@
+too-many-lines-threshold = 30
+cognitive-complexity-threshold = 8
+too-many-arguments-threshold = 4
+min-ident-chars-threshold = 2
+allowed-idents-below-min-chars = ["id"]
+allow-unwrap-in-tests = true
+allow-expect-in-tests = true
+allow-panic-in-tests = true
+allow-print-in-tests = true
+disallowed-methods = [
+  { path = "std::thread::sleep", reason = "wait on the real condition with a timeout (PERF-12)" },
+  { path = "tokio::sync::mpsc::unbounded_channel", reason = "use a bounded channel (PERF-08)" },
+]

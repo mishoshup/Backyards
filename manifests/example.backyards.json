@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "gardens": [
+    {
+      "name": "dev",
+      "image": "alpine:latest",
+      "cpu_count": 2,
+      "memory_mebibytes": 2048,
+      "network": "disabled"
+    }
+  ]
+}

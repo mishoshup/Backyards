@@ -1,0 +1,18 @@
+[package]
+name = "kernel"
+description = "Shared primitives for Backyards features"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+publish = false
+
+[dependencies]
+thiserror.workspace = true
+
+[lints]
+workspace = true

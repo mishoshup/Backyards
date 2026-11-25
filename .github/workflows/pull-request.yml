@@ -1,0 +1,33 @@
+name: pull-request
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize, ready_for_review]
+
+permissions:
+  contents: read
+
+jobs:
+  naming:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Check branch and title
+        env:
+          PULL_REQUEST_TITLE: ${{ github.event.pull_request.title }}
+          PULL_REQUEST_BRANCH: ${{ github.event.pull_request.head.ref }}
+        run: scripts/check-pull-request-naming.sh
+
+  description:
+    if: github.event.pull_request.draft != true
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Check description sections and checklist
+        env:
+          PULL_REQUEST_BODY: ${{ github.event.pull_request.body }}
+        run: scripts/check-pull-request-description.sh
