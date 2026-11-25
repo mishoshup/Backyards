@@ -40,6 +40,8 @@ pub enum GateError {
     },
     #[error("failed stages: {}", names.join(", "))]
     StagesFailed { names: Vec<&'static str> },
+    #[error(transparent)]
+    Review(#[from] crate::review::ReviewError),
     #[error("{area}: {}", crate::report::pluralize(*count, "violation", "violations"))]
     Violations { area: &'static str, count: usize },
 }

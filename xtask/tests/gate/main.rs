@@ -13,4 +13,8 @@ mod policy;
 #[cfg(test)]
 mod pull_request;
 #[cfg(test)]
+mod review_added_lines;
+#[cfg(test)]
+mod review_prompt;
+#[cfg(test)]
 mod workflow_policy;
