@@ -1,0 +1,95 @@
+name: agent-code-review
+
+permissions: {}
+
+on:
+  pull_request:
+    types: [opened, ready_for_review, synchronize]
+  issue_comment:
+    types: [created]
+
+jobs:
+  authorize:
+    permissions: {}
+    if: >-
+      (github.event_name == 'pull_request' && github.event.pull_request.draft != true && github.event.pull_request.head.repo.full_name == github.repository) ||
+      (github.event_name == 'issue_comment' && github.event.issue.pull_request && contains(github.event.comment.body, '@agent review'))
+    runs-on: ubuntu-latest
+    outputs:
+      is_authorized: ${{ steps.gate.outputs.is_authorized }}
+    steps:
+      - name: Check contributor authorization
+        id: gate
+        env:
+          ACTOR_ASSOCIATION: ${{ github.event_name == 'pull_request' && github.event.pull_request.author_association || github.event.comment.author_association }}
+        run: |
+          case "${ACTOR_ASSOCIATION}" in
+            OWNER|MEMBER|COLLABORATOR) echo "is_authorized=true" >> "${GITHUB_OUTPUT}" ;;
+            *) echo "is_authorized=false" >> "${GITHUB_OUTPUT}" ;;
+          esac
+
+  review:
+    needs: authorize
+    if: needs.authorize.outputs.is_authorized == 'true'
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+      statuses: write
+    concurrency:
+      group: agent-review-${{ github.event.pull_request.html_url || github.event.issue.html_url }}
+      cancel-in-progress: true
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
+      REPOSITORY: ${{ github.repository }}
+      GH_TOKEN: ${{ github.token }}
+      STATUS_CONTEXT: ai-review-completed/deepseek
+    steps:
+      - name: Check out the base branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Skip when this commit is already reviewed
+        id: skip
+        run: .github/scripts/review/should-skip-review.sh "${PR_NUMBER}" "${STATUS_CONTEXT}"
+
+      - name: Select reviewable paths
+        if: steps.skip.outputs.skip != 'true'
+        id: filter
+        run: |
+          gh api --paginate "/repos/${REPOSITORY}/pulls/${PR_NUMBER}/files" --jq '.[].filename' > "${RUNNER_TEMP}/changed-files.txt"
+          if grep -qE '(\.rs$|(^|/)Cargo\.(toml|lock)$|^scripts/|^\.github/|^\.agents/|^\.claude/)' "${RUNNER_TEMP}/changed-files.txt"; then
+            echo "code=true" >> "${GITHUB_OUTPUT}"
+          fi
+
+      - name: Mark review as in progress
+        if: steps.skip.outputs.skip != 'true'
+        run: .github/scripts/review/add-pull-request-reaction.sh "${PR_NUMBER}" "eyes"
+
+      - name: Run the inline review
+        id: inline-review
+        if: steps.skip.outputs.skip != 'true' && steps.filter.outputs.code == 'true'
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          HEAD_SHA: ${{ steps.skip.outputs.head_sha }}
+        run: scripts/review/run-review.sh inline
+
+      - name: Run the holistic review
+        id: holistic-review
+        if: steps.skip.outputs.skip != 'true' && steps.filter.outputs.code == 'true'
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          HEAD_SHA: ${{ steps.skip.outputs.head_sha }}
+        run: scripts/review/run-review.sh holistic
+
+      - name: Record review completion
+        if: steps.skip.outputs.skip != 'true' && (steps.filter.outputs.code != 'true' || (steps.inline-review.outcome == 'success' && steps.holistic-review.outcome == 'success'))
+        run: .github/scripts/review/record-review-complete.sh "${{ steps.skip.outputs.head_sha }}" "${STATUS_CONTEXT}" "Reviewed at this commit - comment @agent review to re-run"
+
+      - name: Remove the in-progress indicator
+        if: always() && steps.skip.outputs.skip != 'true'
+        run: .github/scripts/review/remove-pull-request-reaction.sh "${PR_NUMBER}" "eyes" "github-actions[bot]"
