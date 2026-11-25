@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use std::time::Duration;
 
 use crate::report::GateError;
-use crate::workspace::{capture_command, capture_command_limited};
+use crate::workspace::{capture_command, capture_command_limited, pause_for};
 
 #[derive(Debug, Clone)]
 pub struct GitHub {
@@ -47,13 +47,13 @@ impl GitHub {
     }
 
     pub fn post_content(&self, route_suffix: &str, options: &[&str]) -> Result<String, GateError> {
-        std::thread::park_timeout(self.posting_pause);
+        pause_for(self.posting_pause);
         let mut result = self.api(route_suffix, options);
         for attempt in 1..=POST_RETRIES {
             if !result.as_ref().is_err_and(is_transient_failure) {
                 break;
             }
-            std::thread::park_timeout(self.retry_backoff * attempt);
+            pause_for(self.retry_backoff * attempt);
             result = self.api(route_suffix, options);
         }
         result
@@ -93,5 +93,5 @@ fn is_transient_failure(error: &GateError) -> bool {
     let GateError::CommandFailed { stderr, .. } = error else {
         return true;
     };
-    stderr.contains("HTTP 429") || stderr.contains("(HTTP 5") || stderr.contains("rate limit")
+    stderr.contains("HTTP 429") || stderr.contains("rate limit")
 }

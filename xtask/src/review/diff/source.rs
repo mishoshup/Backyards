@@ -41,10 +41,22 @@ fn diff_untracked_files(
     )?;
     let mut combined = String::new();
     for path in listing.lines() {
-        reject_file_over_remaining_budget(repository, path, tracked_bytes + combined.len())?;
+        if !is_binary_file(repository, path)? {
+            reject_file_over_remaining_budget(repository, path, tracked_bytes + combined.len())?;
+        }
         combined.push_str(&diff_new_file(repository, path)?);
     }
     Ok(combined)
+}
+
+fn is_binary_file(repository: &Repository, path: &str) -> Result<bool, GateError> {
+    let statistics = capture_command(
+        repository.root(),
+        "git",
+        &["diff", "--no-index", "--numstat", "--", "/dev/null", path],
+        &[SUCCESS_EXIT, DIFFERENCES_FOUND_EXIT],
+    )?;
+    Ok(statistics.starts_with("-\t-\t"))
 }
 
 fn diff_new_file(repository: &Repository, path: &str) -> Result<String, GateError> {

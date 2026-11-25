@@ -27,3 +27,12 @@ pub enum ToolError {
     #[error("git listing failed: {reason}")]
     ListingFailed { reason: String },
 }
+
+impl ToolError {
+    #[must_use]
+    pub fn from_read_failure(source: &std::io::Error) -> Self {
+        Self::ReadFailed {
+            reason: source.to_string(),
+        }
+    }
+}

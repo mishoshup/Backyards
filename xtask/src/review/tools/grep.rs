@@ -89,19 +89,14 @@ fn find_matching_lines(relative: &str, text: &str, pattern: &Regex) -> Vec<Strin
 }
 
 fn read_searchable_text(path: &Path) -> Result<String, ToolError> {
-    let metadata = std::fs::metadata(path).map_err(|source| read_failure(&source))?;
+    let metadata =
+        std::fs::metadata(path).map_err(|source| ToolError::from_read_failure(&source))?;
     if !metadata.is_file() || metadata.len() > MAXIMUM_SEARCHED_FILE_BYTES {
         return Err(ToolError::NotSearchable {
             limit: MAXIMUM_SEARCHED_FILE_BYTES,
         });
     }
-    std::fs::read_to_string(path).map_err(|source| read_failure(&source))
-}
-
-fn read_failure(source: &std::io::Error) -> ToolError {
-    ToolError::ReadFailed {
-        reason: source.to_string(),
-    }
+    std::fs::read_to_string(path).map_err(|source| ToolError::from_read_failure(&source))
 }
 
 fn render_result(result: &SearchResult) -> String {

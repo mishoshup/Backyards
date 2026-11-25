@@ -25,7 +25,7 @@ pub fn read_file(root: &Path, arguments: &ReadFileArguments) -> Result<String, T
         return Err(ToolError::NotAFile);
     }
     reject_oversized_file(&resolved)?;
-    let file = File::open(&resolved).map_err(|source| read_failure(&source))?;
+    let file = File::open(&resolved).map_err(|source| ToolError::from_read_failure(&source))?;
     let numbered = number_requested_lines(BufReader::new(file), arguments)?;
     Ok(truncate_output(&numbered))
 }
@@ -46,7 +46,7 @@ fn number_requested_lines(
         if number >= first {
             let text = format!(
                 "{number}\t{}",
-                line.map_err(|source| read_failure(&source))?
+                line.map_err(|source| ToolError::from_read_failure(&source))?
             );
             numbered_bytes += text.len();
             numbered.push(text);
@@ -57,7 +57,7 @@ fn number_requested_lines(
 
 fn reject_oversized_file(path: &Path) -> Result<(), ToolError> {
     let size = std::fs::metadata(path)
-        .map_err(|source| read_failure(&source))?
+        .map_err(|source| ToolError::from_read_failure(&source))?
         .len();
     if size > MAXIMUM_READ_FILE_BYTES {
         return Err(ToolError::FileTooLarge {
@@ -65,10 +65,4 @@ fn reject_oversized_file(path: &Path) -> Result<(), ToolError> {
         });
     }
     Ok(())
-}
-
-fn read_failure(source: &std::io::Error) -> ToolError {
-    ToolError::ReadFailed {
-        reason: source.to_string(),
-    }
 }

@@ -22,7 +22,7 @@ impl FakeGh {
             directory,
             failing_marker,
             output,
-            "gh: Bad Gateway (HTTP 502)",
+            "gh: API rate limit exceeded (HTTP 429)",
         )
     }
 

@@ -92,21 +92,35 @@ fn interpret_chunk(chunk: Chunk) -> Vec<StreamEvent> {
     let Some(choice) = chunk.choices.into_iter().next() else {
         return vec![StreamEvent::Ignored];
     };
-    let mut events = vec![interpret_delta(choice.delta)];
+    let mut events = interpret_delta(choice.delta);
     if let Some(reason) = choice.finish_reason {
         events.push(StreamEvent::Finished(FinishReason::from_label(reason)));
     }
     events
 }
 
-fn interpret_delta(delta: Delta) -> StreamEvent {
+fn interpret_delta(delta: Delta) -> Vec<StreamEvent> {
+    let mut events = Vec::new();
+    push_non_empty(&mut events, delta.reasoning_content, StreamEvent::Reasoning);
+    push_non_empty(&mut events, delta.content, StreamEvent::Content);
     if let Some(calls) = delta.tool_calls {
-        return StreamEvent::ToolCalls(calls.into_iter().map(to_fragment).collect());
+        events.push(StreamEvent::ToolCalls(
+            calls.into_iter().map(to_fragment).collect(),
+        ));
     }
-    match (delta.content, delta.reasoning_content) {
-        (Some(content), _) if !content.is_empty() => StreamEvent::Content(content),
-        (_, Some(reasoning)) if !reasoning.is_empty() => StreamEvent::Reasoning(reasoning),
-        _ => StreamEvent::Ignored,
+    if events.is_empty() {
+        events.push(StreamEvent::Ignored);
+    }
+    events
+}
+
+fn push_non_empty(
+    events: &mut Vec<StreamEvent>,
+    text: Option<String>,
+    build: fn(String) -> StreamEvent,
+) {
+    if let Some(text) = text.filter(|candidate| !candidate.is_empty()) {
+        events.push(build(text));
     }
 }
 

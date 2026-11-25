@@ -71,11 +71,21 @@ fn run_reviewed(
         mark_started_then_review(repository, run, &comment)
     }) {
         Ok(summaries) => finish_success(run, &comment, &summaries),
-        Err(error) => {
-            finish_failure(run, &comment, &error.to_string())?;
-            Err(error)
-        }
+        Err(error) => Err(record_failure_keeping_cause(run, &comment, error)),
     }
+}
+
+fn record_failure_keeping_cause(
+    run: ReviewRun<'_>,
+    comment: &ProgressComment,
+    cause: GateError,
+) -> GateError {
+    if let Err(recording) = finish_failure(run, comment, &cause.to_string()) {
+        drop(write_report_line(&format!(
+            "could not record the review failure: {recording}"
+        )));
+    }
+    cause
 }
 
 fn create_progress(run: ReviewRun<'_>) -> Result<ProgressComment, GateError> {
@@ -144,7 +154,7 @@ fn fail_if_any_reviewer_failed(
         .collect();
     Err(ReviewError::ReviewersFailed {
         details: format!(
-            "{}. Findings from {} were posted. Run `/agent-review` to retry; after two runs the owner must use `/agent-review force`.",
+            "{}. Findings from {} were posted. Run `/agent-review` to retry; after {MAXIMUM_RUNS} runs the owner must use `/agent-review force`.",
             reasons.join("; "),
             pluralize(posted_reviewers, "other reviewer", "other reviewers")
         ),
