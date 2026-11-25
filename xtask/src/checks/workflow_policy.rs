@@ -9,6 +9,7 @@ const REVIEW_WORKFLOW: &str = ".github/workflows/agent-code-review.yml";
 const REQUIRED_TIMEOUT_MINUTES: u32 = 25;
 const PIPELINE_COMMAND: &str = "cargo xtask review pull-request";
 const FORBIDDEN_TRIGGER: &str = "synchronize";
+const REQUIRED_TRIGGER_TYPES: &str = "types: [opened, ready_for_review]";
 const TIMEOUT_PATTERN: &str = r"timeout-minutes:\s*(\d+)";
 
 pub fn check_workflow_policy(repository: &Repository) -> Result<Vec<Finding>, GateError> {
@@ -78,8 +79,10 @@ fn check_fork_pull_requests_are_refused(workflow: &str) -> Vec<Finding> {
 }
 
 fn check_review_does_not_run_on_every_push(workflow: &str) -> Vec<Finding> {
-    if workflow.contains(FORBIDDEN_TRIGGER) {
-        return create_violation("review must not trigger on every push");
+    if workflow.contains(FORBIDDEN_TRIGGER) || !workflow.contains(REQUIRED_TRIGGER_TYPES) {
+        return create_violation(
+            "review must trigger only on opened and ready_for_review pull request events",
+        );
     }
     Vec::new()
 }

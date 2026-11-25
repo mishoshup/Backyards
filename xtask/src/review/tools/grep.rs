@@ -81,6 +81,9 @@ fn find_matching_lines(relative: &str, text: &str, pattern: &Regex) -> Vec<Strin
         if pattern.is_match(line) {
             found.push(format!("{relative}:{}:{line}", index + 1));
         }
+        if found.len() > MAXIMUM_GREP_MATCHES {
+            break;
+        }
     }
     found
 }

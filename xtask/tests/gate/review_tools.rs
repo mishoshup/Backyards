@@ -25,16 +25,24 @@ fn read_file_numbers_the_requested_range() {
 }
 
 #[test]
+fn read_file_marks_output_cut_at_the_size_cap() {
+    let fixture = Fixture::create();
+    let long_file = "0123456789\n".repeat(5_000);
+    fixture.write("big.txt", &long_file);
+    let output = run(&fixture, "read_file", r#"{"path":"big.txt"}"#);
+    assert!(output.ends_with("[output truncated after 30000 bytes]"));
+}
+
+#[test]
 fn read_file_rejects_parent_traversal() {
     let fixture = fixture_with_sources();
-    let outside = fixture
-        .path()
-        .with_file_name("backyards-outside-fixture.txt");
+    let outside_name = format!("backyards-outside-{}.txt", std::process::id());
+    let outside = fixture.path().with_file_name(&outside_name);
     std::fs::write(&outside, "secret").unwrap();
     let output = run(
         &fixture,
         "read_file",
-        r#"{"path":"../backyards-outside-fixture.txt"}"#,
+        &format!(r#"{{"path":"../{outside_name}"}}"#),
     );
     std::fs::remove_file(&outside).unwrap();
     assert!(output.contains("outside the repository"), "{output}");

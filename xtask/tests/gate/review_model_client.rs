@@ -116,6 +116,12 @@ fn empty_and_invalid_answers_are_failures() {
 }
 
 #[test]
+fn parse_answer_ignores_prose_after_the_json_object() {
+    let answer = parse_answer(r#"{"violations":[]} Note: I considered {path:line} but declined"#);
+    assert_eq!(answer.unwrap().violations, []);
+}
+
+#[test]
 fn low_confidence_finding_parses() {
     let answer = parse_answer("{\"violations\":[{\"ruleId\":\"A-1\",\"path\":\"a.rs\",\"line\":3,\"body\":\"A-1 x\",\"confidence\":\"low\"}]}").unwrap();
     assert_eq!(answer.violations[0].line, 3);

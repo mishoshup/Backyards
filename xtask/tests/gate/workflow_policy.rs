@@ -1,7 +1,7 @@
 use crate::fixture::{Fixture, any_message_contains, error_messages};
 use xtask::checks::check_workflow_policy;
 
-const GOOD_WORKFLOW: &str = "permissions: {}\njobs:\n  review:\n    if: github.event.pull_request.head.repo.full_name == github.repository\n    timeout-minutes: 25\n    steps:\n      - run: cargo xtask review pull-request\n        with:\n          ref: refs/pull/1/head\n";
+const GOOD_WORKFLOW: &str = "permissions: {}\non:\n  pull_request:\n    types: [opened, ready_for_review]\njobs:\n  review:\n    if: github.event.pull_request.head.repo.full_name == github.repository\n    timeout-minutes: 25\n    steps:\n      - run: cargo xtask review pull-request\n        with:\n          ref: refs/pull/1/head\n";
 
 fn workflow_fixture(workflow: &str) -> Fixture {
     let fixture = Fixture::create();
@@ -13,6 +13,16 @@ fn workflow_fixture(workflow: &str) -> Fixture {
 fn compliant_workflow_has_no_violations() {
     let findings = check_workflow_policy(&workflow_fixture(GOOD_WORKFLOW).repository()).unwrap();
     assert_eq!(error_messages(&findings), Vec::<String>::new());
+}
+
+#[test]
+fn pull_request_trigger_without_explicit_types_is_reported() {
+    let workflow = GOOD_WORKFLOW.replace("    types: [opened, ready_for_review]\n", "");
+    let findings = check_workflow_policy(&workflow_fixture(&workflow).repository()).unwrap();
+    assert!(any_message_contains(
+        &findings,
+        "only on opened and ready_for_review"
+    ));
 }
 
 #[test]
@@ -71,7 +81,7 @@ fn synchronize_trigger_is_reported() {
     let findings = check_workflow_policy(&workflow_fixture(&workflow).repository()).unwrap();
     assert!(any_message_contains(
         &findings,
-        "must not trigger on every push"
+        "only on opened and ready_for_review"
     ));
 }
 

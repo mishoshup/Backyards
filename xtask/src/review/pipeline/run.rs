@@ -1,4 +1,4 @@
-use crate::report::{GateError, write_report_line};
+use crate::report::{GateError, pluralize, write_report_line};
 use crate::review::ReviewError;
 use crate::review::ReviewerMode;
 use crate::review::github::{FORCE_PHRASE, GitHub, MAXIMUM_RUNS, ProgressComment, StatusState};
@@ -144,8 +144,9 @@ fn fail_if_any_reviewer_failed(
         .collect();
     Err(ReviewError::ReviewersFailed {
         details: format!(
-            "{}. Findings from {posted_reviewers} other reviewer(s) were posted. Run `/agent-review` to retry.",
-            reasons.join("; ")
+            "{}. Findings from {} were posted. Run `/agent-review` to retry.",
+            reasons.join("; "),
+            pluralize(posted_reviewers, "other reviewer", "other reviewers")
         ),
     }
     .into())
