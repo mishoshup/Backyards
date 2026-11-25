@@ -2,10 +2,10 @@ use std::path::{Path, PathBuf};
 
 use regex::Regex;
 
-use crate::error::GateError;
-use crate::finding::Finding;
-use crate::line_scan::{ScanRule, report_matching_lines};
-use crate::repository::{Repository, compile_pattern};
+use crate::report::Finding;
+use crate::report::GateError;
+use crate::report::{ScanRule, report_matching_lines};
+use crate::workspace::{Repository, compile_pattern};
 
 const AREA: &str = "architecture";
 const BINARY_CRATE: &str = "backyards";
@@ -104,10 +104,11 @@ fn find_forbidden_feature_dependencies(
     repository: &Repository,
     crate_names: &[String],
 ) -> Result<Vec<Finding>, GateError> {
+    let pattern = compile_dependency_pattern(crate_names)?;
     let mut findings = Vec::new();
     for name in crate_names {
         let allowed = list_allowed_dependencies(name, crate_names);
-        let declared = list_declared_dependencies(repository, name, crate_names)?;
+        let declared = list_declared_dependencies(repository, name, &pattern)?;
         findings.extend(describe_forbidden(name, &declared, &allowed));
     }
     Ok(findings)
@@ -152,20 +153,21 @@ fn list_feature_dependencies(crate_name: &str, crate_names: &[String]) -> Vec<St
 fn list_declared_dependencies(
     repository: &Repository,
     crate_name: &str,
-    crate_names: &[String],
+    pattern: &regex::Regex,
 ) -> Result<Vec<String>, GateError> {
     let manifest = repository.read_text(&Repository::crate_manifest_path(crate_name))?;
-    let mut declared = Vec::new();
-    for candidate in crate_names {
-        let pattern = compile_pattern(&format!(
-            r"(?m)^{}(\.workspace)?\s*=",
-            regex::escape(candidate)
-        ))?;
-        if pattern.is_match(&manifest) {
-            declared.push(candidate.clone());
-        }
-    }
+    let mut declared: Vec<String> = pattern
+        .captures_iter(&manifest)
+        .map(|captures| captures[1].to_owned())
+        .collect();
+    declared.sort();
+    declared.dedup();
     Ok(declared)
+}
+
+fn compile_dependency_pattern(crate_names: &[String]) -> Result<regex::Regex, GateError> {
+    let names: Vec<String> = crate_names.iter().map(|name| regex::escape(name)).collect();
+    compile_pattern(&format!(r"(?m)^({})(\.workspace)?\s*=", names.join("|")))
 }
 
 fn list_all_manifests(crate_names: &[String]) -> Vec<PathBuf> {

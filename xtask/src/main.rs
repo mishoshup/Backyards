@@ -2,9 +2,9 @@ use std::path::Path;
 use std::process::ExitCode;
 
 use clap::Parser;
-use xtask::cli::{Cli, run_task};
-use xtask::finding::write_report_line;
-use xtask::repository::Repository;
+use xtask::command::{Cli, run_task};
+use xtask::report::write_report_line;
+use xtask::workspace::Repository;
 
 const REPORT_WRITE_FAILURE_STATUS: u8 = 2;
 

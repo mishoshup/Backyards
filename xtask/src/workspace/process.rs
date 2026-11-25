@@ -1,8 +1,8 @@
 use std::path::Path;
 use std::process::Command;
 
-use crate::error::GateError;
-use crate::finding::write_report_line;
+use crate::report::GateError;
+use crate::report::write_report_line;
 
 pub fn run_command(directory: &Path, program: &str, arguments: &[&str]) -> Result<(), GateError> {
     let description = describe_command(program, arguments);

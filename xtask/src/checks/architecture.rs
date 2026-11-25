@@ -1,20 +1,21 @@
 use std::path::{Path, PathBuf};
 
-use crate::error::GateError;
-use crate::finding::Finding;
-use crate::line_scan::{ScanRule, report_matching_lines};
-use crate::manifest_layers::check_manifests;
-use crate::repository::{Repository, compile_pattern};
+use super::manifest_layers::check_manifests;
+use crate::report::Finding;
+use crate::report::GateError;
+use crate::report::{ScanRule, report_matching_lines};
+use crate::workspace::{Repository, compile_pattern};
 
 const AREA: &str = "architecture";
 const CATCH_ALL_STEMS: [&str; 4] = ["utils", "helpers", "misc", "common"];
 const HARD_LINE_LIMIT: usize = 400;
 const SOFT_LINE_LIMIT: usize = 300;
+// Split so the architecture scan does not match this source file.
 const RUNTIME_MACRO_PATTERN: &str = concat!(r"#\[tokio", r"::main\]");
 const PLATFORM_CHECK_PATTERN: &str = concat!(r"cfg\(.*target", "_os");
 
 pub fn check_architecture(repository: &Repository) -> Result<Vec<Finding>, GateError> {
-    let sources = list_source_files(repository)?;
+    let sources = repository.list_workspace_sources()?;
     let crate_names = repository.list_crate_names()?;
     let mut findings = Vec::new();
     findings.extend(find_catch_all_file_names(&sources));
@@ -23,14 +24,6 @@ pub fn check_architecture(repository: &Repository) -> Result<Vec<Finding>, GateE
     findings.extend(find_files_over_length_limits(repository, &sources)?);
     findings.extend(check_manifests(repository, &crate_names)?);
     Ok(findings)
-}
-
-fn list_source_files(repository: &Repository) -> Result<Vec<PathBuf>, GateError> {
-    let files = repository.list_files(&["rs"])?;
-    Ok(files
-        .into_iter()
-        .filter(|path| path.starts_with("crates") || path.starts_with("xtask"))
-        .collect())
 }
 
 fn find_catch_all_file_names(sources: &[PathBuf]) -> Vec<Finding> {

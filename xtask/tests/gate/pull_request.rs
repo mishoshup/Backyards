@@ -1,5 +1,5 @@
-use xtask::finding::count_errors;
-use xtask::pull_request::{check_pull_request_description, check_pull_request_naming};
+use xtask::checks::{check_pull_request_description, check_pull_request_naming};
+use xtask::report::count_errors;
 
 fn naming_errors(title: &str, branch: &str) -> usize {
     count_errors(&check_pull_request_naming(title, branch).unwrap())

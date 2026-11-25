@@ -18,8 +18,8 @@ fn policy_exits_zero_on_a_clean_repository() {
     fixture.write("crates/demo/src/lib.rs", "pub fn demo() {}\n");
     let output = run_xtask(&fixture, &["policy"]);
     assert!(output.status.success());
-    assert!(output.stdout.is_empty());
-    assert!(output.stderr.is_empty());
+    assert_eq!(output.stdout, Vec::<u8>::new());
+    assert_eq!(output.stderr, Vec::<u8>::new());
 }
 
 #[test]
@@ -32,7 +32,7 @@ fn policy_exits_nonzero_and_reports_the_violation_on_stderr() {
     );
     let output = run_xtask(&fixture, &["policy"]);
     assert_eq!(output.status.code(), Some(1));
-    assert!(output.stdout.is_empty());
+    assert_eq!(output.stdout, Vec::<u8>::new());
     let report = String::from_utf8(output.stderr).unwrap();
     assert!(report.contains("marker comment"));
     assert!(report.contains("1 violation"));

@@ -1,5 +1,7 @@
-use crate::support::{CLEAN_MANIFEST, Fixture, any_message_contains, error_messages};
-use xtask::architecture::check_architecture;
+use crate::support::{
+    CLEAN_MANIFEST, Fixture, any_message_contains, error_messages, warning_messages,
+};
+use xtask::checks::check_architecture;
 
 fn layered_fixture() -> Fixture {
     let fixture = Fixture::create();
@@ -20,7 +22,7 @@ fn layered_fixture() -> Fixture {
 #[test]
 fn layered_workspace_has_no_violations() {
     let findings = check_architecture(&layered_fixture().repository()).unwrap();
-    assert!(error_messages(&findings).is_empty());
+    assert_eq!(error_messages(&findings), Vec::<String>::new());
 }
 
 #[test]
@@ -55,7 +57,7 @@ fn runtime_macro_in_a_binary_entry_point_is_allowed() {
         &format!("{macro_text}\nasync fn main() {{}}\n"),
     );
     let findings = check_architecture(&fixture.repository()).unwrap();
-    assert!(error_messages(&findings).is_empty());
+    assert_eq!(error_messages(&findings), Vec::<String>::new());
 }
 
 #[test]
@@ -80,8 +82,12 @@ fn file_over_the_hard_limit_is_an_error_and_over_the_soft_limit_a_warning() {
     fixture.write("crates/kernel/src/long.rs", &"fn a() {}\n".repeat(401));
     fixture.write("crates/kernel/src/medium.rs", &"fn a() {}\n".repeat(301));
     let findings = check_architecture(&fixture.repository()).unwrap();
-    assert_eq!(error_messages(&findings).len(), 1);
-    assert!(any_message_contains(&findings, "medium.rs has 301 lines"));
+    let errors = error_messages(&findings);
+    assert_eq!(errors.len(), 1);
+    assert!(errors[0].contains("long.rs"));
+    let warnings = warning_messages(&findings);
+    assert_eq!(warnings.len(), 1);
+    assert!(warnings[0].contains("medium.rs has 301 lines"));
 }
 
 #[test]
@@ -122,7 +128,7 @@ fn adapter_may_depend_on_its_own_feature() {
         ),
     );
     let findings = check_architecture(&fixture.repository()).unwrap();
-    assert!(error_messages(&findings).is_empty());
+    assert_eq!(error_messages(&findings), Vec::<String>::new());
 }
 
 #[test]

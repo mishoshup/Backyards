@@ -2,12 +2,12 @@ use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
 
-use crate::commit_message::check_commit_message_file;
-use crate::error::GateError;
-use crate::finding::Finding;
-use crate::gate::{report_check, run_architecture, run_gate, run_policy, run_workflow_policy};
-use crate::pull_request::{check_pull_request_description, check_pull_request_naming};
-use crate::repository::Repository;
+use crate::checks::check_commit_message_file;
+use crate::checks::{check_pull_request_description, check_pull_request_naming};
+use crate::command::{report_check, run_architecture, run_gate, run_policy, run_workflow_policy};
+use crate::report::Finding;
+use crate::report::GateError;
+use crate::workspace::Repository;
 
 #[derive(Debug, Parser)]
 #[command(

@@ -2,9 +2,9 @@ use std::path::{Path, PathBuf};
 
 use regex::Regex;
 
-use crate::error::GateError;
-use crate::finding::Finding;
-use crate::repository::Repository;
+use crate::report::Finding;
+use crate::report::GateError;
+use crate::workspace::Repository;
 
 #[derive(Debug)]
 pub struct ScanRule<'rule> {
@@ -37,7 +37,8 @@ pub fn report_matching_lines(
     Ok(findings)
 }
 
-fn describe_matches(rule: &ScanRule, file: &Path, text: &str) -> Vec<Finding> {
+#[must_use]
+pub fn describe_matches(rule: &ScanRule, file: &Path, text: &str) -> Vec<Finding> {
     text.lines()
         .enumerate()
         .filter(|(_, line)| rule.pattern.is_match(line))

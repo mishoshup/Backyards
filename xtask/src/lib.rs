@@ -1,13 +1,4 @@
-pub mod architecture;
-pub mod cli;
-pub mod commit_message;
-pub mod error;
-pub mod finding;
-pub mod gate;
-pub mod line_scan;
-pub mod manifest_layers;
-pub mod policy;
-pub mod process;
-pub mod pull_request;
-pub mod repository;
-pub mod workflow_policy;
+pub mod checks;
+pub mod command;
+pub mod report;
+pub mod workspace;

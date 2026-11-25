@@ -1,8 +1,8 @@
 use std::path::Path;
 
-use crate::error::GateError;
-use crate::finding::Finding;
-use crate::repository::{Repository, compile_pattern};
+use crate::report::Finding;
+use crate::report::GateError;
+use crate::workspace::{Repository, compile_pattern};
 
 const AREA: &str = "workflow";
 const REVIEW_WORKFLOW: &str = ".github/workflows/agent-code-review.yml";
@@ -89,8 +89,7 @@ fn check_fork_pull_requests_are_refused(workflow: &str) -> Vec<Finding> {
 }
 
 fn check_allowlist_is_present(repository: &Repository) -> Result<Vec<Finding>, GateError> {
-    let listed = repository.list_files(&["txt"])?;
-    if listed.iter().any(|path| path == Path::new(ALLOWLIST)) {
+    if repository.is_tracked(Path::new(ALLOWLIST))? {
         return Ok(Vec::new());
     }
     Ok(create_violation(

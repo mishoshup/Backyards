@@ -1,5 +1,5 @@
 use crate::support::{Fixture, any_message_contains, error_messages};
-use xtask::workflow_policy::check_workflow_policy;
+use xtask::checks::check_workflow_policy;
 
 const GOOD_WORKFLOW: &str = "permissions: {}\njobs:\n  review:\n    if: github.event.pull_request.head.repo.full_name == github.repository\n    timeout-minutes: 45\n    steps:\n      - with:\n          ref: refs/pull/1/head\n";
 
@@ -11,6 +11,7 @@ fn workflow_fixture(workflow: &str) -> Fixture {
         "git rev-parse HEAD\n",
     );
     fixture.write("scripts/review/allowed-fetch-hosts.txt", "example.test\n");
+    fixture.stage("scripts/review/allowed-fetch-hosts.txt");
     fixture.write("scripts/review/run-local-review.sh", "gh -f \"$prompt\"\n");
     fixture
 }
@@ -18,7 +19,7 @@ fn workflow_fixture(workflow: &str) -> Fixture {
 #[test]
 fn compliant_workflow_has_no_violations() {
     let findings = check_workflow_policy(&workflow_fixture(GOOD_WORKFLOW).repository()).unwrap();
-    assert!(error_messages(&findings).is_empty());
+    assert_eq!(error_messages(&findings), Vec::<String>::new());
 }
 
 #[test]
@@ -68,5 +69,22 @@ fn unpinned_checkout_is_reported() {
     assert!(any_message_contains(
         &findings,
         "checkout must name the pull request ref"
+    ));
+}
+
+#[test]
+fn untracked_allowlist_is_reported() {
+    let fixture = Fixture::create();
+    fixture.write(".github/workflows/agent-code-review.yml", GOOD_WORKFLOW);
+    fixture.write(
+        ".github/scripts/review/should-skip-review.sh",
+        "git rev-parse HEAD\n",
+    );
+    fixture.write("scripts/review/allowed-fetch-hosts.txt", "example.test\n");
+    fixture.write("scripts/review/run-local-review.sh", "gh -f \"$prompt\"\n");
+    let findings = check_workflow_policy(&fixture.repository()).unwrap();
+    assert!(any_message_contains(
+        &findings,
+        "allowed-fetch-hosts.txt must be listed by git"
     ));
 }

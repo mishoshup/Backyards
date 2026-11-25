@@ -1,10 +1,10 @@
-use crate::architecture::check_architecture;
-use crate::error::GateError;
-use crate::finding::{Finding, report_findings};
-use crate::policy::check_policy;
-use crate::process::run_command;
-use crate::repository::Repository;
-use crate::workflow_policy::check_workflow_policy;
+use crate::checks::check_architecture;
+use crate::checks::check_policy;
+use crate::checks::check_workflow_policy;
+use crate::report::GateError;
+use crate::report::{Finding, report_findings};
+use crate::workspace::Repository;
+use crate::workspace::run_command;
 
 type Stage = fn(&Repository) -> Result<(), GateError>;
 
@@ -45,15 +45,18 @@ pub fn report_check(area: &'static str, findings: &[Finding]) -> Result<(), Gate
 }
 
 fn run_workflow_lint(repository: &Repository) -> Result<(), GateError> {
-    run_command(
-        repository.root(),
-        "actionlint",
-        &[
-            ".github/workflows/agent-code-review.yml",
-            ".github/workflows/ci.yml",
-            ".github/workflows/pull-request.yml",
-        ],
-    )
+    let workflows = list_workflow_paths(repository)?;
+    let arguments: Vec<&str> = workflows.iter().map(String::as_str).collect();
+    run_command(repository.root(), "actionlint", &arguments)
+}
+
+fn list_workflow_paths(repository: &Repository) -> Result<Vec<String>, GateError> {
+    Ok(repository
+        .list_files(&["yml"])?
+        .iter()
+        .filter(|path| path.starts_with(".github/workflows"))
+        .map(|path| path.display().to_string())
+        .collect())
 }
 
 fn run_shell_check(repository: &Repository) -> Result<(), GateError> {

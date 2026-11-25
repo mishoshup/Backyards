@@ -26,6 +26,11 @@ pub enum GateError {
     },
     #[error("git listed a path that is not valid UTF-8: {0}")]
     NonUtf8Path(#[source] std::str::Utf8Error),
+    #[error("{directory} has an entry whose name is not valid UTF-8: {name:?}")]
+    NonUtf8DirectoryName {
+        directory: PathBuf,
+        name: std::ffi::OsString,
+    },
     #[error("cannot write the report: {0}")]
     WriteReport(#[source] std::io::Error),
     #[error("invalid pattern {pattern}: {source}")]
@@ -33,6 +38,6 @@ pub enum GateError {
         pattern: String,
         source: regex::Error,
     },
-    #[error("{area}: {}", crate::finding::pluralize(*count, "violation", "violations"))]
+    #[error("{area}: {}", crate::report::pluralize(*count, "violation", "violations"))]
     Violations { area: &'static str, count: usize },
 }

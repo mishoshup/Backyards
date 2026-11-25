@@ -1,7 +1,7 @@
-use crate::error::GateError;
-use crate::finding::Finding;
-use crate::finding::pluralize;
-use crate::repository::compile_pattern;
+use crate::report::Finding;
+use crate::report::GateError;
+use crate::report::pluralize;
+use crate::workspace::compile_pattern;
 
 const NAMING_AREA: &str = "pull request naming";
 const DESCRIPTION_AREA: &str = "pull request description";

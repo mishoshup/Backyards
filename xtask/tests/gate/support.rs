@@ -2,8 +2,8 @@ use std::path::PathBuf;
 use std::process::Command;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
-use xtask::finding::{Finding, Severity};
-use xtask::repository::Repository;
+use xtask::report::{Finding, Severity};
+use xtask::workspace::Repository;
 
 static FIXTURE_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
@@ -34,6 +34,15 @@ impl Fixture {
         std::fs::write(path, content).unwrap();
     }
 
+    pub fn stage(&self, relative: &str) {
+        let status = Command::new("git")
+            .args(["add", relative])
+            .current_dir(&self.root)
+            .status()
+            .unwrap();
+        assert!(status.success());
+    }
+
     pub fn path(&self) -> &std::path::Path {
         &self.root
     }
@@ -53,6 +62,14 @@ pub fn error_messages(findings: &[Finding]) -> Vec<String> {
     findings
         .iter()
         .filter(|finding| finding.severity == Severity::Error)
+        .map(|finding| finding.message.clone())
+        .collect()
+}
+
+pub fn warning_messages(findings: &[Finding]) -> Vec<String> {
+    findings
+        .iter()
+        .filter(|finding| finding.severity == Severity::Warning)
         .map(|finding| finding.message.clone())
         .collect()
 }

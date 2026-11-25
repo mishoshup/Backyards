@@ -1,8 +1,8 @@
 use std::path::Path;
 
-use crate::error::GateError;
-use crate::finding::Finding;
-use crate::repository::{Repository, compile_pattern};
+use crate::report::Finding;
+use crate::report::GateError;
+use crate::workspace::{Repository, compile_pattern};
 
 const AREA: &str = "commit message";
 const MAXIMUM_SUBJECT_LENGTH: usize = 72;

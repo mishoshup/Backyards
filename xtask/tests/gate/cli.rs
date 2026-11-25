@@ -1,5 +1,5 @@
 use clap::CommandFactory;
-use xtask::cli::Cli;
+use xtask::command::Cli;
 
 #[test]
 fn command_definition_is_consistent() {

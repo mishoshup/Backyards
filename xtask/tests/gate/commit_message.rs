@@ -1,5 +1,5 @@
-use xtask::commit_message::check_commit_message;
-use xtask::finding::count_errors;
+use xtask::checks::check_commit_message;
+use xtask::report::count_errors;
 
 fn error_count(message: &str) -> usize {
     count_errors(&check_commit_message(message).unwrap())

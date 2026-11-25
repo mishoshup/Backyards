@@ -1,5 +1,5 @@
 use crate::support::{CLEAN_MANIFEST, Fixture, any_message_contains, error_messages};
-use xtask::policy::check_policy;
+use xtask::checks::check_policy;
 
 fn clean_fixture() -> Fixture {
     let fixture = Fixture::create();
@@ -12,7 +12,7 @@ fn clean_fixture() -> Fixture {
 fn clean_repository_has_no_violations() {
     let fixture = clean_fixture();
     let findings = check_policy(&fixture.repository()).unwrap();
-    assert!(error_messages(&findings).is_empty());
+    assert_eq!(error_messages(&findings), Vec::<String>::new());
 }
 
 #[test]
@@ -78,5 +78,5 @@ fn untracked_file_listed_by_git_is_still_scanned() {
     let fixture = clean_fixture();
     fixture.write("notes.md", "bad \u{2014} dash\n");
     let findings = check_policy(&fixture.repository()).unwrap();
-    assert!(!error_messages(&findings).is_empty());
+    assert_ne!(error_messages(&findings), Vec::<String>::new());
 }

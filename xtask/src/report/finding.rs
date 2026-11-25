@@ -1,6 +1,6 @@
 use std::io::Write;
 
-use crate::error::GateError;
+use crate::report::GateError;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Severity {

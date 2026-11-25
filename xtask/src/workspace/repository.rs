@@ -3,7 +3,7 @@ use std::process::Command;
 
 use regex::Regex;
 
-use crate::error::GateError;
+use crate::report::GateError;
 
 const CRATES_DIRECTORY: &str = "crates";
 
@@ -29,13 +29,32 @@ impl Repository {
     }
 
     pub fn list_files(&self, extensions: &[&str]) -> Result<Vec<PathBuf>, GateError> {
-        let listing = self.run_git_listing()?;
+        let listing = self.run_git_listing(&[
+            "ls-files",
+            "--cached",
+            "--others",
+            "--exclude-standard",
+            "-z",
+        ])?;
         let files = parse_listing(&listing)?;
         Ok(files
             .into_iter()
             .filter(|path| self.has_file(path))
             .filter(|path| has_extension(path, extensions))
             .collect())
+    }
+
+    pub fn list_workspace_sources(&self) -> Result<Vec<PathBuf>, GateError> {
+        Ok(self
+            .list_files(&["rs"])?
+            .into_iter()
+            .filter(|path| path.starts_with("crates") || path.starts_with("xtask"))
+            .collect())
+    }
+
+    pub fn is_tracked(&self, relative: &Path) -> Result<bool, GateError> {
+        let tracked = parse_listing(&self.run_git_listing(&["ls-files", "--cached", "-z"])?)?;
+        Ok(tracked.iter().any(|path| path == relative))
     }
 
     pub fn read_text(&self, relative: &Path) -> Result<String, GateError> {
@@ -62,15 +81,9 @@ impl Repository {
             .join("Cargo.toml")
     }
 
-    fn run_git_listing(&self) -> Result<Vec<u8>, GateError> {
+    fn run_git_listing(&self, arguments: &[&str]) -> Result<Vec<u8>, GateError> {
         let output = Command::new("git")
-            .args([
-                "ls-files",
-                "--cached",
-                "--others",
-                "--exclude-standard",
-                "-z",
-            ])
+            .args(arguments)
             .current_dir(&self.root)
             .output()
             .map_err(|source| GateError::RunCommand {
@@ -125,8 +138,18 @@ fn collect_directory_names(directory: &Path) -> Result<Vec<String>, GateError> {
     for entry in std::fs::read_dir(directory).map_err(read_error)? {
         let entry = entry.map_err(read_error)?;
         if entry.path().is_dir() {
-            names.push(entry.file_name().to_string_lossy().into_owned());
+            names.push(read_directory_name(&entry, directory)?);
         }
     }
     Ok(names)
+}
+
+fn read_directory_name(entry: &std::fs::DirEntry, directory: &Path) -> Result<String, GateError> {
+    entry
+        .file_name()
+        .into_string()
+        .map_err(|name| GateError::NonUtf8DirectoryName {
+            directory: directory.to_path_buf(),
+            name,
+        })
 }
