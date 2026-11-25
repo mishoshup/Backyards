@@ -10,7 +10,8 @@ on:
 
 jobs:
   authorize:
-    permissions: {}
+    permissions:
+      pull-requests: read
     if: >-
       (github.event_name == 'pull_request' && github.event.pull_request.draft != true && github.event.pull_request.head.repo.full_name == github.repository && !contains(github.event.pull_request.title, 'Revert')) ||
       (github.event_name == 'issue_comment' && github.event.issue.pull_request && contains(github.event.comment.body, '/agent-review'))
@@ -21,12 +22,21 @@ jobs:
       - name: Check contributor authorization
         id: gate
         env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          PULL_REQUEST_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
           ACTOR_ASSOCIATION: ${{ github.event_name == 'pull_request' && github.event.pull_request.author_association || github.event.comment.author_association }}
         run: |
+          head_repository=$(gh api "repos/${REPOSITORY}/pulls/${PULL_REQUEST_NUMBER}" --jq .head.repo.full_name)
           case "${ACTOR_ASSOCIATION}" in
-            OWNER|MEMBER|COLLABORATOR) echo "is_authorized=true" >> "${GITHUB_OUTPUT}" ;;
-            *) echo "is_authorized=false" >> "${GITHUB_OUTPUT}" ;;
+            OWNER|MEMBER|COLLABORATOR) is_trusted_actor=true ;;
+            *) is_trusted_actor=false ;;
           esac
+          if [[ "${is_trusted_actor}" == true && "${head_repository}" == "${REPOSITORY}" ]]; then
+            echo "is_authorized=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "is_authorized=false" >> "${GITHUB_OUTPUT}"
+          fi
 
   review:
     needs: authorize
@@ -40,7 +50,7 @@ jobs:
       group: agent-review-${{ github.repository }}-${{ github.event.pull_request.number || github.event.issue.number }}
       cancel-in-progress: true
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     env:
       PULL_REQUEST_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
       REPOSITORY: ${{ github.repository }}

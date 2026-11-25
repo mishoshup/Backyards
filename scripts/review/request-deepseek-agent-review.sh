@@ -6,8 +6,8 @@ cd "$(dirname "$0")/../.."
 source scripts/review/review-tools.sh
 
 readonly base_url="${DEEPSEEK_BASE_URL:-https://api.deepseek.com}"
-readonly request_timeout_seconds=600
-readonly maximum_rounds=14
+readonly request_timeout_seconds=120
+readonly maximum_rounds=8
 readonly model="${REVIEW_MODEL_HOLISTIC:-deepseek-flash}"
 readonly tool_definitions="scripts/review/tool-definitions.json"
 

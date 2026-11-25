@@ -2,7 +2,7 @@
 set -euo pipefail
 
 base_url="${DEEPSEEK_BASE_URL:-https://api.deepseek.com}"
-readonly request_timeout_seconds=600
+readonly request_timeout_seconds=300
 readonly heartbeat_interval_seconds=15
 
 select_model() {

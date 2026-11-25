@@ -16,7 +16,7 @@ post_each_violation() {
   while IFS= read -r violation; do
     .github/scripts/review/create-inline-comment.sh "${PULL_REQUEST_NUMBER}" \
       "$(jq -r .path <<<"${violation}")" "$(jq -r .body <<<"${violation}")" \
-      "$(jq -r .line <<<"${violation}")" "${review_mode}" || failed=1
+      "$(jq -r .line <<<"${violation}")" "${review_mode}" "$(jq -r '.ruleId // ""' <<<"${violation}")" || failed=1
   done < <(jq -c '.violations[]' <<<"$1")
   return "${failed}"
 }

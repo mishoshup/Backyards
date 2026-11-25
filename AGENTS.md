@@ -147,6 +147,7 @@ Detailed procedures are in `.agents/skills/`. The matching skill must be read be
 | --- | --- |
 | `rust-coding-standards` | Writing, changing or reviewing Rust. One file per rule in `rules/`, each with a source and an enforcing check. |
 | `boxlite-adapter` | Changes to the BoxLite backend or to any garden option. |
+| `babysit-pr` | Taking any change from local work through review threads to merge. |
 | `real-box-testing` | Writing or running tests that start a real garden. |
 | `ship-change` | Taking completed work to a reviewed pull request. |
 
