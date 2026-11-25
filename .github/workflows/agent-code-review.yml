@@ -37,7 +37,7 @@ jobs:
       pull-requests: write
       statuses: write
     concurrency:
-      group: agent-review-${{ github.event.pull_request.html_url || github.event.issue.html_url }}
+      group: agent-review-${{ github.repository }}-${{ github.event.pull_request.number || github.event.issue.number }}
       cancel-in-progress: true
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -47,9 +47,10 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       REVIEWER_CONTEXT: ai-review-completed/deepseek
     steps:
-      - name: Check out the base branch
+      - name: Check out the pull request head
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
         with:
+          ref: refs/pull/${{ env.PR_NUMBER }}/head
           fetch-depth: 1
           persist-credentials: false
 

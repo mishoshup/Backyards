@@ -3,8 +3,12 @@ set -euo pipefail
 
 readonly review_mode="${1:?mode required}"
 
+finding_noun() {
+  if [ "$1" -eq 1 ]; then echo finding; else echo findings; fi
+}
+
 record_result() {
-  echo "$1: $2 finding(s)" > "${RUNNER_TEMP:-/tmp}/review-result-$1"
+  echo "$1: $2 $(finding_noun "$2")" > "${RUNNER_TEMP:-/tmp}/review-result-$1"
 }
 
 post_each_violation() {

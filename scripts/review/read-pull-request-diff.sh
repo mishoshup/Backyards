@@ -12,8 +12,9 @@ fetch_diff() {
 }
 
 reject_oversized_diff() {
-  local diff_text="$1"
-  if [ "${#diff_text}" -gt "$maximum_diff_bytes" ]; then
+  local diff_byte_count
+  diff_byte_count=$(printf '%s' "$1" | wc -c)
+  if [ "${diff_byte_count}" -gt "$maximum_diff_bytes" ]; then
     echo "review: diff exceeds ${maximum_diff_bytes} bytes; split the pull request" >&2
     exit 1
   fi
