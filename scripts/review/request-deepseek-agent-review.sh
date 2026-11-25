@@ -11,9 +11,14 @@ readonly maximum_rounds=8
 readonly model="${REVIEW_MODEL_HOLISTIC:-deepseek-flash}"
 readonly tool_definitions="scripts/review/tool-definitions.json"
 
+render_tool_definitions() {
+  jq --arg hosts "$(paste -sd ' ' scripts/review/allowed-fetch-hosts.txt)" \
+    'walk(if type == "string" then gsub("{{ALLOWED_HOSTS}}"; $hosts) else . end)' "${tool_definitions}"
+}
+
 build_request_body() {
-  jq -n --arg model "${model}" --arg choice "$2" --slurpfile messages "$1" --slurpfile tools "${tool_definitions}" \
-    '{model: $model, messages: $messages[0], tools: $tools[0], tool_choice: $choice}'
+  jq -n --arg model "${model}" --arg choice "$2" --slurpfile messages "$1" --argjson tools "$(render_tool_definitions)" \
+    '{model: $model, messages: $messages[0], tools: $tools, tool_choice: $choice}'
 }
 
 post_chat_completion() {

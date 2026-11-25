@@ -50,7 +50,7 @@ main() {
   if [[ "$(jq '.violations | length' <<<"${review_json}")" -eq 0 ]]; then
     return 0
   fi
-  REVIEW_HEAD_SHA=$(gh api "repos/${REPOSITORY}/pulls/${PULL_REQUEST_NUMBER}" --jq .head.sha)
+  : "${REVIEW_HEAD_SHA:?reviewed commit required}"
   export REVIEW_HEAD_SHA
   post_each_violation "${review_json}" || post_summary_comment "${review_json}"
 }

@@ -91,6 +91,7 @@ jobs:
         if: steps.skip.outputs.should_skip != 'true' && steps.filter.outputs.has_reviewable_files == 'true'
         env:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          REVIEW_HEAD_SHA: ${{ steps.skip.outputs.head_sha }}
         run: scripts/review/run-review.sh inline
 
       - name: Run the holistic review
@@ -98,6 +99,7 @@ jobs:
         if: steps.skip.outputs.should_skip != 'true' && steps.filter.outputs.has_reviewable_files == 'true'
         env:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          REVIEW_HEAD_SHA: ${{ steps.skip.outputs.head_sha }}
         run: scripts/review/run-review.sh holistic
 
       - name: Record review completion

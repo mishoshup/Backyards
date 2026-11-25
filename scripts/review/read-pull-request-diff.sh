@@ -22,7 +22,7 @@ reject_oversized_diff() {
 
 main() {
   local diff_text
-  diff_text=$(fetch_diff "$@")
+  diff_text=$(fetch_diff "$@" | head -c "$((maximum_diff_bytes + 1))" || true)
   reject_oversized_diff "$diff_text"
   printf '%s\n' "$diff_text"
 }
