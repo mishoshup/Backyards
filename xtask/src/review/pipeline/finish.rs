@@ -1,10 +1,8 @@
 use crate::report::{GateError, pluralize, write_report_line};
 use crate::review::ReviewerMode;
-use crate::review::github::{GitHub, ProgressComment, StatusState, StatusUpdate};
+use crate::review::github::{BOT_LOGIN, GitHub, ProgressComment, StatusState, StatusUpdate};
 use crate::review::pipeline::options::ReviewRun;
 use crate::review::post::{DroppedFinding, ValidationOutcome};
-
-const BOT_LOGIN: &str = "github-actions[bot]";
 
 pub struct ReviewSummary {
     pub mode: ReviewerMode,

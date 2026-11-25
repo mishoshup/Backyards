@@ -5,7 +5,7 @@ use crate::review::github::ProgressComment;
 use crate::review::pipeline::finish::finish_failure;
 use crate::review::pipeline::options::ReviewRun;
 
-const REVIEW_DEADLINE: Duration = Duration::from_mins(22);
+const REVIEW_DEADLINE: Duration = Duration::from_mins(18);
 const DEADLINE_REASON: &str = "The review exceeded its 22 minute budget before the job time limit.";
 
 pub fn with_deadline<Outcome>(

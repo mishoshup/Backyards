@@ -1,5 +1,5 @@
 use crate::report::GateError;
-use crate::review::diff::reject_oversized_diff;
+use crate::review::diff::{MAXIMUM_DIFF_BYTES, reject_oversized_diff};
 use crate::review::github::client::GitHub;
 
 impl GitHub {
@@ -9,9 +9,10 @@ impl GitHub {
         head_sha: &str,
     ) -> Result<String, GateError> {
         let base = self.read_base_branch(pull_request)?;
-        let diff = self.api(
+        let diff = self.api_limited(
             &format!("compare/{base}...{head_sha}"),
             &["-H", "Accept: application/vnd.github.diff"],
+            MAXIMUM_DIFF_BYTES,
         )?;
         reject_oversized_diff(&diff)?;
         Ok(diff)

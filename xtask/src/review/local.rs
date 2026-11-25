@@ -90,11 +90,22 @@ fn write_prompt_file(mode: ReviewerMode, prompt: &str) -> Result<PathBuf, GateEr
         mode.label(),
         std::process::id()
     ));
-    std::fs::write(&path, prompt).map_err(|source| GateError::ReadFile {
+    write_private_file(&path, prompt).map_err(|source| GateError::ReadFile {
         path: path.clone(),
         source,
     })?;
     Ok(path)
+}
+
+fn write_private_file(path: &Path, content: &str) -> std::io::Result<()> {
+    use std::io::Write;
+    use std::os::unix::fs::OpenOptionsExt;
+    let mut file = std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .mode(0o600)
+        .open(path)?;
+    file.write_all(content.as_bytes())
 }
 
 fn remove_prompt_file(path: &Path) -> Result<(), GateError> {

@@ -28,7 +28,11 @@ pub enum ReviewTask {
         event_name: String,
         #[arg(long, env = "REVIEW_COMMENT_BODY", default_value = "")]
         comment_body: String,
-        #[arg(long, default_value = "ai-review-completed/deepseek")]
+        #[arg(
+            long,
+            default_value = "ai-review-completed/deepseek",
+            value_parser = parse_status_prefix
+        )]
         status_prefix: String,
     },
 }
@@ -59,4 +63,26 @@ pub fn run_review_task(task: &ReviewTask, repository: &Repository) -> Result<(),
             },
         ),
     }
+}
+
+fn parse_status_prefix(value: &str) -> Result<String, String> {
+    if is_valid_status_prefix(value) {
+        Ok(value.to_owned())
+    } else {
+        Err("status prefix must use lowercase letters, digits, '/', '_' and '-' only".to_owned())
+    }
+}
+
+fn is_valid_status_prefix(value: &str) -> bool {
+    let allowed = |character: char| {
+        character.is_ascii_lowercase()
+            || character.is_ascii_digit()
+            || matches!(character, '/' | '_' | '-')
+    };
+    let edge =
+        |character: Option<char>| character.is_some_and(|symbol| symbol.is_ascii_alphanumeric());
+    !value.is_empty()
+        && value.chars().all(allowed)
+        && edge(value.chars().next())
+        && edge(value.chars().last())
 }

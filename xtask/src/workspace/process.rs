@@ -1,5 +1,6 @@
+use std::io::Read;
 use std::path::Path;
-use std::process::{Command, Output};
+use std::process::{Child, Command, Output, Stdio};
 
 use crate::report::GateError;
 use crate::report::write_report_line;
@@ -69,4 +70,68 @@ fn ensure_accepted_exit(
         status: output.status,
         stderr: String::from_utf8_lossy(&output.stderr).trim().to_owned(),
     })
+}
+
+pub fn capture_command_limited(
+    directory: &Path,
+    program: &str,
+    arguments: &[&str],
+    limit: usize,
+) -> Result<String, GateError> {
+    let description = describe_command(program, arguments);
+    let mut child = spawn_with_piped_output(directory, program, arguments, &description)?;
+    let captured = read_at_most(&mut child, limit + 1, &description)?;
+    if captured.len() > limit {
+        discard_child(child);
+        return Ok(String::from_utf8_lossy(&captured).into_owned());
+    }
+    let output = wait_for_output(child, &description)?;
+    ensure_accepted_exit(&output, &[0], description)?;
+    Ok(String::from_utf8_lossy(&captured).into_owned())
+}
+
+fn spawn_with_piped_output(
+    directory: &Path,
+    program: &str,
+    arguments: &[&str],
+    description: &str,
+) -> Result<Child, GateError> {
+    Command::new(program)
+        .args(arguments)
+        .current_dir(directory)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|source| GateError::RunCommand {
+            command: description.to_owned(),
+            source,
+        })
+}
+
+fn read_at_most(child: &mut Child, limit: usize, description: &str) -> Result<Vec<u8>, GateError> {
+    let mut captured = Vec::new();
+    if let Some(stdout) = child.stdout.take() {
+        stdout
+            .take(limit as u64)
+            .read_to_end(&mut captured)
+            .map_err(|source| GateError::RunCommand {
+                command: description.to_owned(),
+                source,
+            })?;
+    }
+    Ok(captured)
+}
+
+fn discard_child(mut child: Child) {
+    child.kill().ok();
+    child.wait().ok();
+}
+
+fn wait_for_output(child: Child, description: &str) -> Result<Output, GateError> {
+    child
+        .wait_with_output()
+        .map_err(|source| GateError::RunCommand {
+            command: description.to_owned(),
+            source,
+        })
 }

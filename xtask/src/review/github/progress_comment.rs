@@ -1,6 +1,7 @@
 use crate::report::GateError;
 use crate::review::github::client::GitHub;
 
+pub const BOT_LOGIN: &str = "github-actions[bot]";
 pub const PROGRESS_MARKER: &str = "<!-- backyards-agent-review -->";
 const SHORT_SHA_LENGTH: usize = 7;
 
@@ -54,7 +55,9 @@ impl GitHub {
     }
 
     pub fn count_progress_comments(&self, pull_request: u64) -> Result<usize, GateError> {
-        let filter = format!(".[] | select(.body | contains(\"{PROGRESS_MARKER}\")) | .id");
+        let filter = format!(
+            ".[] | select(.user.login == \"{BOT_LOGIN}\" and (.body | contains(\"{PROGRESS_MARKER}\"))) | .id"
+        );
         let output = self.api(
             &format!("issues/{pull_request}/comments"),
             &["--paginate", "--jq", &filter],

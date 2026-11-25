@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use crate::report::GateError;
-use crate::workspace::capture_command;
+use crate::workspace::{capture_command, capture_command_limited};
 
 #[derive(Debug, Clone)]
 pub struct GitHub {
@@ -32,6 +32,18 @@ impl GitHub {
 
     pub fn call(&self, arguments: &[&str]) -> Result<String, GateError> {
         capture_command(&self.directory, &self.program, arguments, &[0])
+    }
+
+    pub fn api_limited(
+        &self,
+        route_suffix: &str,
+        options: &[&str],
+        limit: usize,
+    ) -> Result<String, GateError> {
+        let route = format!("repos/{}/{route_suffix}", self.repository);
+        let mut arguments = vec!["api", route.as_str()];
+        arguments.extend_from_slice(options);
+        capture_command_limited(&self.directory, &self.program, &arguments, limit)
     }
 
     pub fn api(&self, route_suffix: &str, options: &[&str]) -> Result<String, GateError> {
