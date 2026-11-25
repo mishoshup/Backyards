@@ -1,0 +1,115 @@
+use crate::report::{GateError, write_report_line};
+use crate::review::ReviewerMode;
+use crate::review::github::{FORCE_PHRASE, GitHub, MAXIMUM_RUNS, ProgressComment, StatusState};
+use crate::review::pipeline::decide::{RunDecision, decide_run};
+use crate::review::pipeline::finish::{
+    ReviewSummary, finish_failure, finish_success, record_status, summarize,
+};
+use crate::review::pipeline::options::{CiOptions, ReviewRun};
+use crate::review::pipeline::reviewers::{load_review_context, run_both_reviewers};
+use crate::review::post::{PostTarget, ValidationOutcome, publish_findings};
+use crate::workspace::{Repository, capture_command};
+
+pub fn run_ci_review(repository: &Repository, options: &CiOptions) -> Result<(), GateError> {
+    let github = GitHub::new(options.repository.clone(), repository.root().to_path_buf());
+    let head_sha = read_head_sha(repository)?;
+    match decide_run(&github, options, &head_sha)? {
+        RunDecision::AlreadyReviewed => report("this commit is already reviewed; skipping"),
+        RunDecision::RunCapReached { previous_runs } => refuse_run(&github, options, previous_runs),
+        RunDecision::NoReviewablePaths => {
+            record_status(
+                ReviewRun {
+                    github: &github,
+                    options,
+                    head_sha: &head_sha,
+                },
+                StatusState::Success,
+                "Skipped - no reviewable files changed",
+            );
+            report("no reviewable files changed; skipping")
+        }
+        RunDecision::Proceed => run_reviewed(repository, &github, options, &head_sha),
+    }
+}
+
+fn report(line: &str) -> Result<(), GateError> {
+    write_report_line(line)
+}
+
+fn read_head_sha(repository: &Repository) -> Result<String, GateError> {
+    let output = capture_command(repository.root(), "git", &["rev-parse", "HEAD"], &[0])?;
+    Ok(output.trim().to_owned())
+}
+
+fn refuse_run(github: &GitHub, options: &CiOptions, previous_runs: usize) -> Result<(), GateError> {
+    let body = format!(
+        "Agent review is limited to {MAXIMUM_RUNS} runs per pull request and {previous_runs} have run. Comment `{FORCE_PHRASE}` to run it again."
+    );
+    let body_field = format!("body={body}");
+    github.api(
+        &format!("issues/{}/comments", options.pull_request),
+        &["-X", "POST", "-f", &body_field],
+    )?;
+    report("run cap reached; refusal comment posted")
+}
+
+fn run_reviewed(
+    repository: &Repository,
+    github: &GitHub,
+    options: &CiOptions,
+    head_sha: &str,
+) -> Result<(), GateError> {
+    let run = ReviewRun {
+        github,
+        options,
+        head_sha,
+    };
+    let comment = start_progress(run)?;
+    match review_and_publish(repository, run) {
+        Ok(summaries) => {
+            finish_success(run, &comment, &summaries);
+            Ok(())
+        }
+        Err(error) => {
+            finish_failure(run, &comment, &error.to_string());
+            Err(error)
+        }
+    }
+}
+
+fn start_progress(run: ReviewRun<'_>) -> Result<ProgressComment, GateError> {
+    let comment = run
+        .github
+        .create_progress_comment(run.options.pull_request, run.head_sha)?;
+    run.github
+        .add_comment_reaction(&comment.identifier, "eyes")?;
+    record_status(run, StatusState::Pending, "Review in progress");
+    Ok(comment)
+}
+
+fn review_and_publish(
+    repository: &Repository,
+    run: ReviewRun<'_>,
+) -> Result<Vec<ReviewSummary>, GateError> {
+    let diff = run
+        .github
+        .read_pull_request_diff(run.options.pull_request, run.head_sha)?;
+    let context = load_review_context(repository, diff)?;
+    let outcomes = run_both_reviewers(&context)?;
+    publish_all(run, &outcomes)?;
+    Ok(summarize(&outcomes))
+}
+
+fn publish_all(
+    run: ReviewRun<'_>,
+    outcomes: &[(ReviewerMode, ValidationOutcome)],
+) -> Result<(), GateError> {
+    let target = PostTarget {
+        pull_request: run.options.pull_request,
+        head_sha: run.head_sha,
+    };
+    for (mode, outcome) in outcomes {
+        publish_findings(run.github, target, *mode, &outcome.accepted)?;
+    }
+    Ok(())
+}

@@ -12,7 +12,7 @@ struct Stage {
     run: fn(&Repository) -> Result<(), GateError>,
 }
 
-const STAGES: [Stage; 10] = [
+const STAGES: [Stage; 8] = [
     Stage {
         name: "workflow lint",
         remedy: "edit the workflow lines reported by actionlint",
@@ -22,16 +22,6 @@ const STAGES: [Stage; 10] = [
         name: "workflow policy",
         remedy: "bring the review workflow back to the listed invariants",
         run: run_workflow_policy,
-    },
-    Stage {
-        name: "shell check",
-        remedy: "fix the shellcheck findings above",
-        run: run_shell_check,
-    },
-    Stage {
-        name: "review script tests",
-        remedy: "run scripts/test-review-scripts.sh for the failing case",
-        run: run_review_script_tests,
     },
     Stage {
         name: "policy",
@@ -145,14 +135,6 @@ fn list_workflow_paths(repository: &Repository) -> Result<Vec<String>, GateError
         .filter(|path| path.starts_with(".github/workflows"))
         .map(|path| path.display().to_string())
         .collect())
-}
-
-fn run_shell_check(repository: &Repository) -> Result<(), GateError> {
-    run_command(repository.root(), "scripts/check-shell.sh", &[])
-}
-
-fn run_review_script_tests(repository: &Repository) -> Result<(), GateError> {
-    run_command(repository.root(), "scripts/test-review-scripts.sh", &[])
 }
 
 fn run_formatting_check(repository: &Repository) -> Result<(), GateError> {

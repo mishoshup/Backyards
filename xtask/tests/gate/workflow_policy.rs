@@ -1,18 +1,11 @@
 use crate::fixture::{Fixture, any_message_contains, error_messages};
 use xtask::checks::check_workflow_policy;
 
-const GOOD_WORKFLOW: &str = "permissions: {}\njobs:\n  review:\n    if: github.event.pull_request.head.repo.full_name == github.repository\n    timeout-minutes: 45\n    steps:\n      - with:\n          ref: refs/pull/1/head\n";
+const GOOD_WORKFLOW: &str = "permissions: {}\njobs:\n  review:\n    if: github.event.pull_request.head.repo.full_name == github.repository\n    timeout-minutes: 25\n    steps:\n      - run: cargo xtask review pull-request\n        with:\n          ref: refs/pull/1/head\n";
 
 fn workflow_fixture(workflow: &str) -> Fixture {
     let fixture = Fixture::create();
     fixture.write(".github/workflows/agent-code-review.yml", workflow);
-    fixture.write(
-        ".github/scripts/review/should-skip-review.sh",
-        "git rev-parse HEAD\n",
-    );
-    fixture.write("scripts/review/allowed-fetch-hosts.txt", "example.test\n");
-    fixture.stage("scripts/review/allowed-fetch-hosts.txt");
-    fixture.write("scripts/review/run-local-review.sh", "gh -f \"$prompt\"\n");
     fixture
 }
 
@@ -34,11 +27,11 @@ fn cancelling_review_runs_is_reported() {
 
 #[test]
 fn short_timeout_is_reported() {
-    let workflow = GOOD_WORKFLOW.replace("45", "30");
+    let workflow = GOOD_WORKFLOW.replace("25", "30");
     let findings = check_workflow_policy(&workflow_fixture(&workflow).repository()).unwrap();
     assert!(any_message_contains(
         &findings,
-        "timeout must be at least 45"
+        "timeout must be 25 minutes"
     ));
 }
 
@@ -73,18 +66,21 @@ fn unpinned_checkout_is_reported() {
 }
 
 #[test]
-fn untracked_allowlist_is_reported() {
-    let fixture = Fixture::create();
-    fixture.write(".github/workflows/agent-code-review.yml", GOOD_WORKFLOW);
-    fixture.write(
-        ".github/scripts/review/should-skip-review.sh",
-        "git rev-parse HEAD\n",
-    );
-    fixture.write("scripts/review/allowed-fetch-hosts.txt", "example.test\n");
-    fixture.write("scripts/review/run-local-review.sh", "gh -f \"$prompt\"\n");
-    let findings = check_workflow_policy(&fixture.repository()).unwrap();
+fn synchronize_trigger_is_reported() {
+    let workflow = format!("on:\n  pull_request:\n    types: [synchronize]\n{GOOD_WORKFLOW}");
+    let findings = check_workflow_policy(&workflow_fixture(&workflow).repository()).unwrap();
     assert!(any_message_contains(
         &findings,
-        "allowed-fetch-hosts.txt must be listed by git"
+        "must not trigger on every push"
+    ));
+}
+
+#[test]
+fn missing_rust_pipeline_command_is_reported() {
+    let workflow = GOOD_WORKFLOW.replace("cargo xtask review pull-request", "echo skipped");
+    let findings = check_workflow_policy(&workflow_fixture(&workflow).repository()).unwrap();
+    assert!(any_message_contains(
+        &findings,
+        "must run through cargo xtask review pull-request"
     ));
 }

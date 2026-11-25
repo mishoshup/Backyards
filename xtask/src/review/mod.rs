@@ -1,10 +1,12 @@
 mod cli;
 mod diff;
 mod error;
+mod github;
 mod holistic;
 mod local;
 mod mode;
 mod model;
+mod pipeline;
 mod post;
 mod prompt;
 mod tools;
@@ -14,13 +16,21 @@ pub use diff::{
     AddedLines, MAXIMUM_DIFF_BYTES, parse_added_lines, read_local_diff, reject_oversized_diff,
 };
 pub use error::ReviewError;
+pub use github::{
+    GitHub, ProgressComment, RunPermission, StatusState, decide_run_permission,
+    has_reviewable_path, should_skip_review,
+};
 pub use holistic::{MAXIMUM_ROUNDS, run_holistic_review};
 pub use mode::ReviewerMode;
 pub use model::{
     ChatMessage, ChatRequest, Confidence, ModelClient, ModelEndpoint, ModelReply, ReviewAnswer,
     ToolCall, Violation, parse_answer,
 };
-pub use post::{DropReason, DroppedFinding, ValidationOutcome, validate_violations};
+pub use pipeline::{CiOptions, endpoint_for, run_ci_review};
+pub use post::{
+    DropReason, DroppedFinding, PostTarget, ValidationOutcome, build_footer, build_summary_body,
+    publish_findings, validate_violations,
+};
 pub use prompt::{
     RuleFile, allowed_rule_identifiers, build_rule_checklist, build_system_prompt,
     build_user_prompt, load_reviewer_instructions, load_rule_files,

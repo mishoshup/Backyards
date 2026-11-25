@@ -1,0 +1,81 @@
+use crate::report::GateError;
+use crate::review::github::client::GitHub;
+
+const MAXIMUM_DESCRIPTION_CHARACTERS: usize = 140;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StatusState {
+    Pending,
+    Success,
+    Failure,
+}
+
+impl StatusState {
+    #[must_use]
+    pub const fn label(self) -> &'static str {
+        match self {
+            Self::Pending => "pending",
+            Self::Success => "success",
+            Self::Failure => "failure",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct StatusUpdate<'update> {
+    pub head_sha: &'update str,
+    pub context: &'update str,
+    pub state: StatusState,
+    pub description: &'update str,
+}
+
+impl GitHub {
+    pub fn set_status(&self, update: &StatusUpdate<'_>) -> Result<(), GateError> {
+        let description: String = update
+            .description
+            .chars()
+            .take(MAXIMUM_DESCRIPTION_CHARACTERS)
+            .collect();
+        let state_field = format!("state={}", update.state.label());
+        let context_field = format!("context={}", update.context);
+        let description_field = format!("description={description}");
+        let mut options = vec![
+            "-X",
+            "POST",
+            "-f",
+            &state_field,
+            "-f",
+            &context_field,
+            "-f",
+            &description_field,
+        ];
+        let target_field = run_url().map(|url| format!("target_url={url}"));
+        if let Some(field) = &target_field {
+            options.extend(["-f", field]);
+        }
+        self.api(&format!("statuses/{}", update.head_sha), &options)
+            .map(|_| ())
+    }
+
+    pub fn read_status_state(
+        &self,
+        head_sha: &str,
+        context: &str,
+    ) -> Result<Option<String>, GateError> {
+        let filter =
+            format!("[.statuses[] | select(.context == \"{context}\") | .state] | first // empty");
+        let output = self.api(
+            &format!("commits/{head_sha}/status"),
+            &["--paginate", "--jq", &filter],
+        )?;
+        let state = output.trim();
+        Ok((!state.is_empty()).then(|| state.to_owned()))
+    }
+}
+
+fn run_url() -> Option<String> {
+    let server = std::env::var("GITHUB_SERVER_URL").ok()?;
+    let repository = std::env::var("GITHUB_REPOSITORY").ok()?;
+    let run = std::env::var("GITHUB_RUN_ID").ok()?;
+    Some(format!("{server}/{repository}/actions/runs/{run}"))
+}

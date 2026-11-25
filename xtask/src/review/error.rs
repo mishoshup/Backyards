@@ -28,6 +28,8 @@ pub enum ReviewError {
     InvalidAnswer { reason: String },
     #[error("malformed model stream event: {reason}")]
     MalformedStreamEvent { reason: String },
+    #[error("environment variable {name} is not set")]
+    MissingEnvironment { name: &'static str },
 }
 
 impl ReviewError {
@@ -45,7 +47,8 @@ impl ReviewError {
             | Self::ModelTruncated { .. }
             | Self::EmptyAnswer
             | Self::InvalidAnswer { .. }
-            | Self::MalformedStreamEvent { .. } => false,
+            | Self::MalformedStreamEvent { .. }
+            | Self::MissingEnvironment { .. } => false,
         }
     }
 }
