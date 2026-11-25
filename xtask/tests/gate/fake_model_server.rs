@@ -1,5 +1,6 @@
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
+use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 
 pub enum Script {
@@ -10,6 +11,7 @@ pub enum Script {
 
 pub struct FakeModelServer {
     pub url: String,
+    requests: Arc<Mutex<Vec<String>>>,
     handle: JoinHandle<usize>,
 }
 
@@ -17,8 +19,18 @@ impl FakeModelServer {
     pub fn start(scripts: Vec<Script>) -> Self {
         let listener = TcpListener::bind("127.0.0.1:0").unwrap();
         let url = format!("http://{}/chat/completions", listener.local_addr().unwrap());
-        let handle = std::thread::spawn(move || serve_all(&listener, scripts));
-        Self { url, handle }
+        let requests = Arc::new(Mutex::new(Vec::new()));
+        let recorded = Arc::clone(&requests);
+        let handle = std::thread::spawn(move || serve_all(&listener, scripts, &recorded));
+        Self {
+            url,
+            requests,
+            handle,
+        }
+    }
+
+    pub fn request_bodies(&self) -> Vec<String> {
+        self.requests.lock().unwrap().clone()
     }
 
     pub fn finish(self) -> usize {
@@ -26,13 +38,18 @@ impl FakeModelServer {
     }
 }
 
-fn serve_all(listener: &TcpListener, scripts: Vec<Script>) -> usize {
+fn serve_all(
+    listener: &TcpListener,
+    scripts: Vec<Script>,
+    recorded: &Arc<Mutex<Vec<String>>>,
+) -> usize {
     let count = scripts.len();
     let workers: Vec<JoinHandle<()>> = scripts
         .into_iter()
         .map(|script| {
             let (stream, _) = listener.accept().unwrap();
-            std::thread::spawn(move || serve_one(stream, &script))
+            let recorded = Arc::clone(recorded);
+            std::thread::spawn(move || serve_one(stream, &script, &recorded))
         })
         .collect();
     for worker in workers {
@@ -41,8 +58,9 @@ fn serve_all(listener: &TcpListener, scripts: Vec<Script>) -> usize {
     count
 }
 
-fn serve_one(mut stream: TcpStream, script: &Script) {
-    drain_request(&mut stream);
+fn serve_one(mut stream: TcpStream, script: &Script, recorded: &Mutex<Vec<String>>) {
+    let body = drain_request(&mut stream);
+    recorded.lock().unwrap().push(body);
     match script {
         Script::Respond(body) => write_response(&mut stream, 200, body),
         Script::Status(status) => write_response(&mut stream, *status, "{}"),
@@ -50,14 +68,17 @@ fn serve_one(mut stream: TcpStream, script: &Script) {
     }
 }
 
-fn drain_request(stream: &mut TcpStream) {
+fn drain_request(stream: &mut TcpStream) -> String {
     let mut received = Vec::new();
     let mut buffer = [0_u8; 4096];
     loop {
         let read = stream.read(&mut buffer).unwrap();
         received.extend_from_slice(&buffer[..read]);
         if request_is_complete(&received) {
-            return;
+            let text = String::from_utf8_lossy(&received).into_owned();
+            return text
+                .split_once("\r\n\r\n")
+                .map_or_else(String::new, |(_, body)| body.to_owned());
         }
     }
 }
@@ -111,5 +132,14 @@ pub fn reasoning_event() -> String {
 pub fn finish_event(reason: &str) -> String {
     format!(
         "data: {{\"choices\":[{{\"delta\":{{}},\"finish_reason\":\"{reason}\"}}]}}\n\ndata: [DONE]\n\n"
+    )
+}
+
+pub fn tool_call_event(index: usize, identifier: &str, name: &str, arguments: &str) -> String {
+    let delta = serde_json::json!({"tool_calls": [{"index": index, "id": identifier, "function": {"name": name, "arguments": arguments}}]});
+    format!(
+        "data: {}\n\n{}",
+        serde_json::json!({"choices": [{"delta": delta, "finish_reason": null}]}),
+        finish_event("tool_calls")
     )
 }

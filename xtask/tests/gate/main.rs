@@ -17,8 +17,12 @@ mod pull_request;
 #[cfg(test)]
 mod review_added_lines;
 #[cfg(test)]
+mod review_holistic;
+#[cfg(test)]
 mod review_model_client;
 #[cfg(test)]
 mod review_prompt;
+#[cfg(test)]
+mod review_tools;
 #[cfg(test)]
 mod workflow_policy;

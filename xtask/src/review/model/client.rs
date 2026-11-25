@@ -1,36 +1,31 @@
 use std::io::{BufRead, BufReader, Write};
 use std::time::Instant;
 
-use serde::Serialize;
-use serde_json::json;
+use serde_json::{Value, json};
 
 use crate::review::error::ReviewError;
 use crate::review::model::endpoint::{
     CONNECT_TIMEOUT, ModelEndpoint, PROGRESS_INTERVAL, TOTAL_TIMEOUT,
 };
+use crate::review::model::message::{ChatMessage, FunctionCall, ToolCall};
 use crate::review::model::retry::run_with_retry;
-use crate::review::model::stream::{StreamEvent, parse_stream_line};
+use crate::review::model::stream::{StreamEvent, ToolCallFragment, parse_stream_line};
 
-#[derive(Debug, Clone, Serialize)]
-pub struct ChatMessage {
-    pub role: String,
-    pub content: String,
-}
+const FUNCTION_KIND: &str = "function";
+const EMPTY_ARGUMENTS: &str = "{}";
 
-impl ChatMessage {
-    #[must_use]
-    pub fn new(role: &str, content: String) -> Self {
-        Self {
-            role: role.to_owned(),
-            content,
-        }
-    }
+#[derive(Debug, Clone, Copy)]
+pub struct ChatRequest<'request> {
+    pub messages: &'request [ChatMessage],
+    pub tools: Option<&'request Value>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ModelReply {
     pub content: String,
+    pub reasoning: String,
     pub reasoning_chunks: usize,
+    pub tool_calls: Vec<ToolCall>,
 }
 
 #[derive(Debug)]
@@ -48,27 +43,27 @@ impl ModelClient {
 
     pub fn complete(
         &self,
-        messages: &[ChatMessage],
+        request: ChatRequest<'_>,
         progress: &mut dyn Write,
     ) -> Result<ModelReply, ReviewError> {
         run_with_retry(self.endpoint.retry_delay, || {
-            self.attempt(messages, progress)
+            self.attempt(request, progress)
         })
     }
 
     fn attempt(
         &self,
-        messages: &[ChatMessage],
+        request: ChatRequest<'_>,
         progress: &mut dyn Write,
     ) -> Result<ModelReply, ReviewError> {
-        let response = self.send_request(messages)?;
+        let response = self.send_request(request)?;
         let reader = BufReader::new(response.into_body().into_reader());
         collect_reply(reader, progress)
     }
 
     fn send_request(
         &self,
-        messages: &[ChatMessage],
+        request: ChatRequest<'_>,
     ) -> Result<ureq::http::Response<ureq::Body>, ReviewError> {
         self.agent
             .post(&self.endpoint.url)
@@ -76,7 +71,7 @@ impl ModelClient {
                 "Authorization",
                 &format!("Bearer {}", self.endpoint.api_key),
             )
-            .send_json(build_request_body(&self.endpoint.model, messages))
+            .send_json(build_request_body(&self.endpoint.model, request))
             .map_err(|error| classify_transport_error(&error))
     }
 }
@@ -90,15 +85,19 @@ fn build_agent(endpoint: &ModelEndpoint) -> ureq::Agent {
         .into()
 }
 
-fn build_request_body(model: &str, messages: &[ChatMessage]) -> serde_json::Value {
-    json!({
+fn build_request_body(model: &str, request: ChatRequest<'_>) -> Value {
+    let mut body = json!({
         "model": model,
-        "messages": messages,
+        "messages": request.messages,
         "stream": true,
-        "response_format": { "type": "json_object" },
         "reasoning_effort": "high",
         "thinking": { "type": "enabled" },
-    })
+    });
+    match request.tools {
+        Some(tools) => body["tools"] = tools.clone(),
+        None => body["response_format"] = json!({ "type": "json_object" }),
+    }
+    body
 }
 
 fn classify_transport_error(error: &ureq::Error) -> ReviewError {
@@ -129,7 +128,9 @@ fn classify_read_error(error: &std::io::Error) -> ReviewError {
 
 struct StreamState {
     content: String,
+    reasoning: String,
     reasoning_chunks: usize,
+    tool_calls: Vec<ToolCall>,
     finish_reason: Option<String>,
     started: Instant,
     last_report: Instant,
@@ -140,7 +141,9 @@ impl StreamState {
         let now = Instant::now();
         Self {
             content: String::new(),
+            reasoning: String::new(),
             reasoning_chunks: 0,
+            tool_calls: Vec::new(),
             finish_reason: None,
             started: now,
             last_report: now,
@@ -150,12 +153,34 @@ impl StreamState {
     fn apply(&mut self, event: StreamEvent) -> bool {
         match event {
             StreamEvent::Content(text) => self.content.push_str(&text),
-            StreamEvent::Reasoning => self.reasoning_chunks += 1,
+            StreamEvent::Reasoning(text) => self.record_reasoning(&text),
+            StreamEvent::ToolCall(fragment) => self.merge_tool_call(fragment),
             StreamEvent::Finished(reason) => self.finish_reason = Some(reason),
             StreamEvent::Done => return true,
             StreamEvent::Ignored => {}
         }
         false
+    }
+
+    fn record_reasoning(&mut self, text: &str) {
+        self.reasoning.push_str(text);
+        self.reasoning_chunks += 1;
+    }
+
+    fn merge_tool_call(&mut self, fragment: ToolCallFragment) {
+        while self.tool_calls.len() <= fragment.index {
+            self.tool_calls.push(empty_tool_call());
+        }
+        let call = &mut self.tool_calls[fragment.index];
+        if let Some(identifier) = fragment.identifier {
+            call.id = identifier;
+        }
+        if let Some(name) = fragment.name {
+            call.function.name.push_str(&name);
+        }
+        if let Some(arguments) = fragment.arguments {
+            call.function.arguments.push_str(&arguments);
+        }
     }
 
     fn report_if_due(&mut self, progress: &mut dyn Write) {
@@ -173,16 +198,37 @@ impl StreamState {
         .ok();
     }
 
-    fn into_reply(self) -> Result<ModelReply, ReviewError> {
+    fn into_reply(mut self) -> Result<ModelReply, ReviewError> {
         match self.finish_reason.as_deref() {
-            Some("stop") | None => Ok(ModelReply {
-                content: self.content,
-                reasoning_chunks: self.reasoning_chunks,
-            }),
-            Some(other) => Err(ReviewError::ModelTruncated {
-                finish_reason: other.to_owned(),
-            }),
+            Some("stop" | "tool_calls") | None => {}
+            Some(other) => {
+                return Err(ReviewError::ModelTruncated {
+                    finish_reason: other.to_owned(),
+                });
+            }
         }
+        for call in &mut self.tool_calls {
+            if call.function.arguments.trim().is_empty() {
+                EMPTY_ARGUMENTS.clone_into(&mut call.function.arguments);
+            }
+        }
+        Ok(ModelReply {
+            content: self.content,
+            reasoning: self.reasoning,
+            reasoning_chunks: self.reasoning_chunks,
+            tool_calls: self.tool_calls,
+        })
+    }
+}
+
+fn empty_tool_call() -> ToolCall {
+    ToolCall {
+        id: String::new(),
+        kind: FUNCTION_KIND.to_owned(),
+        function: FunctionCall {
+            name: String::new(),
+            arguments: String::new(),
+        },
     }
 }
 

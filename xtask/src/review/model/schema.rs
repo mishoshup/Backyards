@@ -35,3 +35,9 @@ pub fn parse_answer(text: &str) -> Result<ReviewAnswer, ReviewError> {
         reason: source.to_string(),
     })
 }
+
+pub fn extract_json_object(text: &str) -> Option<&str> {
+    let start = text.find('{')?;
+    let end = text.rfind('}')?;
+    text.get(start..=end)
+}

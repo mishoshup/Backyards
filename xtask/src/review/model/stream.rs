@@ -8,10 +8,32 @@ const DONE_MARKER: &str = "[DONE]";
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StreamEvent {
     Ignored,
-    Reasoning,
+    Reasoning(String),
+    ToolCall(ToolCallFragment),
     Content(String),
     Finished(String),
     Done,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ToolCallFragment {
+    pub index: usize,
+    pub identifier: Option<String>,
+    pub name: Option<String>,
+    pub arguments: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct ToolCallChunk {
+    index: usize,
+    id: Option<String>,
+    function: Option<FunctionChunk>,
+}
+
+#[derive(Debug, Deserialize)]
+struct FunctionChunk {
+    name: Option<String>,
+    arguments: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -31,6 +53,7 @@ struct Choice {
 struct Delta {
     content: Option<String>,
     reasoning_content: Option<String>,
+    tool_calls: Option<Vec<ToolCallChunk>>,
 }
 
 pub fn parse_stream_line(line: &str) -> Result<StreamEvent, ReviewError> {
@@ -55,9 +78,28 @@ fn interpret_chunk(chunk: Chunk) -> StreamEvent {
     if let Some(reason) = choice.finish_reason {
         return StreamEvent::Finished(reason);
     }
-    match (choice.delta.content, choice.delta.reasoning_content) {
+    interpret_delta(choice.delta)
+}
+
+fn interpret_delta(delta: Delta) -> StreamEvent {
+    if let Some(chunk) = delta.tool_calls.and_then(|calls| calls.into_iter().next()) {
+        return StreamEvent::ToolCall(to_fragment(chunk));
+    }
+    match (delta.content, delta.reasoning_content) {
         (Some(content), _) if !content.is_empty() => StreamEvent::Content(content),
-        (_, Some(reasoning)) if !reasoning.is_empty() => StreamEvent::Reasoning,
+        (_, Some(reasoning)) if !reasoning.is_empty() => StreamEvent::Reasoning(reasoning),
         _ => StreamEvent::Ignored,
+    }
+}
+
+fn to_fragment(chunk: ToolCallChunk) -> ToolCallFragment {
+    let (name, arguments) = chunk
+        .function
+        .map_or((None, None), |function| (function.name, function.arguments));
+    ToolCallFragment {
+        index: chunk.index,
+        identifier: chunk.id,
+        name,
+        arguments,
     }
 }

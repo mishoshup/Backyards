@@ -3,7 +3,9 @@ use std::time::Duration;
 use crate::fake_model_server::{
     FakeModelServer, Script, content_event, finish_event, reasoning_event,
 };
-use xtask::review::{ChatMessage, ModelClient, ModelEndpoint, ReviewError, parse_answer};
+use xtask::review::{
+    ChatMessage, ChatRequest, ModelClient, ModelEndpoint, ReviewError, parse_answer,
+};
 
 fn client_for(server: &FakeModelServer) -> ModelClient {
     let mut endpoint = ModelEndpoint::new(server.url.clone(), "key".to_owned(), "model".to_owned());
@@ -14,7 +16,11 @@ fn client_for(server: &FakeModelServer) -> ModelClient {
 
 fn ask(client: &ModelClient) -> Result<xtask::review::ModelReply, ReviewError> {
     let messages = [ChatMessage::new("user", "review".to_owned())];
-    client.complete(&messages, &mut Vec::new())
+    let request = ChatRequest {
+        messages: &messages,
+        tools: None,
+    };
+    client.complete(request, &mut Vec::new())
 }
 
 fn answer_stream(answer: &str) -> String {

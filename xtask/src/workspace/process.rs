@@ -1,5 +1,5 @@
 use std::path::Path;
-use std::process::Command;
+use std::process::{Command, Output};
 
 use crate::report::GateError;
 use crate::report::write_report_line;
@@ -31,4 +31,42 @@ fn describe_command(program: &str, arguments: &[&str]) -> String {
         .chain(arguments.iter().copied())
         .collect::<Vec<_>>()
         .join(" ")
+}
+
+pub fn capture_command(
+    directory: &Path,
+    program: &str,
+    arguments: &[&str],
+    accepted_exit_codes: &[i32],
+) -> Result<String, GateError> {
+    let description = describe_command(program, arguments);
+    let output = Command::new(program)
+        .args(arguments)
+        .current_dir(directory)
+        .output()
+        .map_err(|source| GateError::RunCommand {
+            command: description.clone(),
+            source,
+        })?;
+    ensure_accepted_exit(&output, accepted_exit_codes, description)?;
+    Ok(String::from_utf8_lossy(&output.stdout).into_owned())
+}
+
+fn ensure_accepted_exit(
+    output: &Output,
+    accepted_exit_codes: &[i32],
+    description: String,
+) -> Result<(), GateError> {
+    if output
+        .status
+        .code()
+        .is_some_and(|code| accepted_exit_codes.contains(&code))
+    {
+        return Ok(());
+    }
+    Err(GateError::CommandFailed {
+        command: description,
+        status: output.status,
+        stderr: String::from_utf8_lossy(&output.stderr).trim().to_owned(),
+    })
 }

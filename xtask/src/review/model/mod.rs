@@ -1,9 +1,11 @@
 mod client;
 mod endpoint;
+mod message;
 mod retry;
 mod schema;
 mod stream;
 
-pub use client::{ChatMessage, ModelClient, ModelReply};
+pub use client::{ChatRequest, ModelClient, ModelReply};
 pub use endpoint::ModelEndpoint;
-pub use schema::{Confidence, ReviewAnswer, Violation, parse_answer};
+pub use message::{ChatMessage, ToolCall};
+pub use schema::{Confidence, ReviewAnswer, Violation, extract_json_object, parse_answer};
