@@ -17,6 +17,23 @@ impl ReviewSummary {
     const fn is_clean(&self) -> bool {
         self.accepted == 0 && self.dropped == 0
     }
+
+    pub fn describe(&self) -> String {
+        let count = if self.accepted == 0 {
+            "no findings, all ok".to_owned()
+        } else {
+            pluralize(self.accepted, "finding", "findings")
+        };
+        let headline = format!(
+            "{}: {count} ({} dropped as invalid)",
+            self.mode.label(),
+            self.dropped
+        );
+        if self.dropped_details.is_empty() {
+            return headline;
+        }
+        format!("{headline}\n{}", self.dropped_details.join("\n"))
+    }
 }
 
 pub fn summarize(outcomes: &[(ReviewerMode, ValidationOutcome)]) -> Vec<ReviewSummary> {
@@ -55,29 +72,12 @@ fn describe_dropped(dropped: &DroppedFinding) -> String {
     format!("  - {}", dropped.describe())
 }
 
-pub fn describe_summary(summary: &ReviewSummary) -> String {
-    let count = if summary.accepted == 0 {
-        "no findings, all ok".to_owned()
-    } else {
-        pluralize(summary.accepted, "finding", "findings")
-    };
-    let headline = format!(
-        "{}: {count} ({} dropped as invalid)",
-        summary.mode.label(),
-        summary.dropped
-    );
-    if summary.dropped_details.is_empty() {
-        return headline;
-    }
-    format!("{headline}\n{}", summary.dropped_details.join("\n"))
-}
-
 pub fn finish_success(
     run: ReviewRun<'_>,
     comment: &ProgressComment,
     summaries: &[ReviewSummary],
 ) -> Result<(), GateError> {
-    let lines: Vec<String> = summaries.iter().map(describe_summary).collect();
+    let lines: Vec<String> = summaries.iter().map(ReviewSummary::describe).collect();
     let body = format!(
         "Agent review of {}: completed\n\n- {}",
         ProgressComment::short_sha(run.head_sha),

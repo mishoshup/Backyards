@@ -5,7 +5,7 @@ use crate::review::github::{FORCE_PHRASE, GitHub, MAXIMUM_RUNS, ProgressComment,
 use crate::review::pipeline::deadline::with_deadline;
 use crate::review::pipeline::decide::{RunDecision, decide_run};
 use crate::review::pipeline::finish::{
-    ReviewSummary, describe_summary, finish_failure, finish_success, record_status, summarize,
+    ReviewSummary, finish_failure, finish_success, record_status, summarize,
 };
 use crate::review::pipeline::options::{CiOptions, ReviewRun};
 use crate::review::pipeline::reviewers::{ReviewerResult, load_review_context, run_both_reviewers};
@@ -70,7 +70,8 @@ fn run_reviewed(
     match with_deadline(run, &comment, || {
         mark_started_then_review(repository, run, &comment)
     }) {
-        Ok(summaries) => finish_success(run, &comment, &summaries),
+        Ok(summaries) => finish_success(run, &comment, &summaries)
+            .map_err(|error| record_failure_keeping_cause(run, &comment, error)),
         Err(error) => Err(record_failure_keeping_cause(run, &comment, error)),
     }
 }
@@ -160,7 +161,7 @@ fn fail_if_anything_failed(
         return Ok(());
     }
     let posted_reviewers = summaries.len();
-    let completed: Vec<String> = summaries.iter().map(describe_summary).collect();
+    let completed: Vec<String> = summaries.iter().map(ReviewSummary::describe).collect();
     Err(ReviewError::ReviewersFailed {
         details: format!(
             "{}. Completed {}: {}. Run `/agent-review` to retry; after {MAXIMUM_RUNS} runs the owner must use `/agent-review force`.",
