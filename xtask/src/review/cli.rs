@@ -22,9 +22,9 @@ pub enum ReviewTask {
     PullRequest {
         #[arg(long)]
         pull_request: u64,
-        #[arg(long, env = "GITHUB_REPOSITORY")]
+        #[arg(long, env = "GITHUB_REPOSITORY", value_parser = parse_repository)]
         repository: String,
-        #[arg(long, env = "GITHUB_EVENT_NAME")]
+        #[arg(long, env = "GITHUB_EVENT_NAME", value_parser = parse_event_name)]
         event_name: String,
         #[arg(long, env = "REVIEW_COMMENT_BODY", default_value = "")]
         comment_body: String,
@@ -66,6 +66,34 @@ pub fn run_review_task(task: &ReviewTask, repository: &Repository) -> Result<(),
                 status_prefix: status_prefix.clone(),
             },
         ),
+    }
+}
+
+const ACCEPTED_EVENT_NAMES: [&str; 2] = ["pull_request", "issue_comment"];
+
+fn parse_repository(value: &str) -> Result<String, String> {
+    match value.split_once('/') {
+        Some((owner, name)) if is_repository_part(owner) && is_repository_part(name) => {
+            Ok(value.to_owned())
+        }
+        _ => Err("repository must be written as owner/name".to_owned()),
+    }
+}
+
+fn is_repository_part(part: &str) -> bool {
+    !part.is_empty()
+        && part.chars().all(|character| {
+            character.is_ascii_alphanumeric() || matches!(character, '-' | '_' | '.')
+        })
+}
+
+fn parse_event_name(value: &str) -> Result<String, String> {
+    if ACCEPTED_EVENT_NAMES.contains(&value) {
+        Ok(value.to_owned())
+    } else {
+        Err(format!(
+            "event name must be one of {ACCEPTED_EVENT_NAMES:?}"
+        ))
     }
 }
 

@@ -33,10 +33,12 @@ impl AddedLines {
     }
 
     fn record(&mut self, path: &str, line: u32) {
-        self.lines_by_path
-            .entry(path.to_owned())
-            .or_default()
-            .insert(line);
+        if let Some(lines) = self.lines_by_path.get_mut(path) {
+            lines.insert(line);
+        } else {
+            self.lines_by_path
+                .insert(path.to_owned(), BTreeSet::from([line]));
+        }
     }
 }
 
@@ -135,15 +137,55 @@ impl DiffParser {
 }
 
 fn parse_target_path(target: &str) -> Option<String> {
-    let path = target.split('\t').next().unwrap_or(target);
+    let path = unquote_git_path(target.split('\t').next().unwrap_or(target));
     if path == DELETED_FILE_TARGET {
         return None;
     }
     Some(
         path.strip_prefix(NEW_SIDE_PATH_PREFIX)
-            .unwrap_or(path)
+            .unwrap_or(&path)
             .to_owned(),
     )
+}
+
+fn unquote_git_path(path: &str) -> String {
+    let Some(inner) = path
+        .strip_prefix('"')
+        .and_then(|rest| rest.strip_suffix('"'))
+    else {
+        return path.to_owned();
+    };
+    let mut bytes = Vec::new();
+    let mut characters = inner.chars().peekable();
+    while let Some(character) = characters.next() {
+        if character == '\\' {
+            bytes.push(read_escape(&mut characters));
+        } else {
+            let mut buffer = [0_u8; 4];
+            bytes.extend_from_slice(character.encode_utf8(&mut buffer).as_bytes());
+        }
+    }
+    String::from_utf8_lossy(&bytes).into_owned()
+}
+
+fn read_escape(characters: &mut std::iter::Peekable<std::str::Chars<'_>>) -> u8 {
+    match characters.next() {
+        Some('t') => b'\t',
+        Some('n') => b'\n',
+        Some(digit @ '0'..='3') => read_octal_escape(digit, characters),
+        Some(other) => u8::try_from(other).unwrap_or(b'?'),
+        None => b'\\',
+    }
+}
+
+fn read_octal_escape(first: char, characters: &mut std::iter::Peekable<std::str::Chars<'_>>) -> u8 {
+    let mut value = first.to_digit(8).unwrap_or(0);
+    for _ in 0..2 {
+        if let Some(digit) = characters.next_if(|candidate| candidate.is_digit(8)) {
+            value = value * 8 + digit.to_digit(8).unwrap_or(0);
+        }
+    }
+    u8::try_from(value).unwrap_or(b'?')
 }
 
 fn parse_hunk_header(header: &str) -> Result<HunkProgress, ReviewError> {

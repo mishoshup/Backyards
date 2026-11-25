@@ -9,6 +9,7 @@ use crate::review::tools::error::ToolError;
 use crate::review::tools::limits::{MAXIMUM_TOOL_OUTPUT_BYTES, truncate_output};
 
 const FIRST_LINE: usize = 1;
+const MAXIMUM_READ_FILE_BYTES: u64 = 5_000_000;
 
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -23,6 +24,7 @@ pub fn read_file(root: &Path, arguments: &ReadFileArguments) -> Result<String, T
     if !resolved.is_file() {
         return Err(ToolError::NotAFile);
     }
+    reject_oversized_file(&resolved)?;
     let file = File::open(&resolved).map_err(|source| read_failure(&source))?;
     let numbered = number_requested_lines(BufReader::new(file), arguments)?;
     Ok(truncate_output(&numbered))
@@ -35,23 +37,34 @@ fn number_requested_lines(
     let first = arguments.start_line.unwrap_or(FIRST_LINE);
     let last = arguments.end_line.unwrap_or(usize::MAX);
     let mut numbered = Vec::new();
+    let mut numbered_bytes = 0_usize;
     for (index, line) in reader.lines().enumerate() {
         let number = index + 1;
-        if number > last || numbered_size(&numbered) > MAXIMUM_TOOL_OUTPUT_BYTES {
+        if number > last || numbered_bytes > MAXIMUM_TOOL_OUTPUT_BYTES {
             break;
         }
         if number >= first {
-            numbered.push(format!(
+            let text = format!(
                 "{number}\t{}",
                 line.map_err(|source| read_failure(&source))?
-            ));
+            );
+            numbered_bytes += text.len();
+            numbered.push(text);
         }
     }
     Ok(numbered.join("\n"))
 }
 
-fn numbered_size(numbered: &[String]) -> usize {
-    numbered.iter().map(String::len).sum()
+fn reject_oversized_file(path: &Path) -> Result<(), ToolError> {
+    let size = std::fs::metadata(path)
+        .map_err(|source| read_failure(&source))?
+        .len();
+    if size > MAXIMUM_READ_FILE_BYTES {
+        return Err(ToolError::FileTooLarge {
+            limit: MAXIMUM_READ_FILE_BYTES,
+        });
+    }
+    Ok(())
 }
 
 fn read_failure(source: &std::io::Error) -> ToolError {

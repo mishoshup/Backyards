@@ -61,8 +61,12 @@ fn reject_file_over_remaining_budget(
     path: &str,
     already_captured: usize,
 ) -> Result<(), GateError> {
-    let file_bytes =
-        std::fs::metadata(repository.root().join(path)).map_or(0, |metadata| metadata.len());
+    let file_bytes = std::fs::metadata(repository.root().join(path))
+        .map_err(|source| GateError::RunCommand {
+            command: format!("read metadata of {path}"),
+            source,
+        })?
+        .len();
     let projected = usize::try_from(file_bytes)
         .map_or(usize::MAX, |bytes| bytes.saturating_add(already_captured));
     if projected > MAXIMUM_DIFF_BYTES {

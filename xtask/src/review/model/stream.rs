@@ -73,13 +73,13 @@ struct Delta {
     tool_calls: Option<Vec<ToolCallChunk>>,
 }
 
-pub fn parse_stream_line(line: &str) -> Result<StreamEvent, ReviewError> {
+pub fn parse_stream_line(line: &str) -> Result<Vec<StreamEvent>, ReviewError> {
     let Some(payload) = line.strip_prefix(DATA_PREFIX) else {
-        return Ok(StreamEvent::Ignored);
+        return Ok(vec![StreamEvent::Ignored]);
     };
     let payload = payload.trim();
     if payload == DONE_MARKER {
-        return Ok(StreamEvent::Done);
+        return Ok(vec![StreamEvent::Done]);
     }
     let chunk: Chunk =
         serde_json::from_str(payload).map_err(|source| ReviewError::MalformedStreamEvent {
@@ -88,14 +88,15 @@ pub fn parse_stream_line(line: &str) -> Result<StreamEvent, ReviewError> {
     Ok(interpret_chunk(chunk))
 }
 
-fn interpret_chunk(chunk: Chunk) -> StreamEvent {
+fn interpret_chunk(chunk: Chunk) -> Vec<StreamEvent> {
     let Some(choice) = chunk.choices.into_iter().next() else {
-        return StreamEvent::Ignored;
+        return vec![StreamEvent::Ignored];
     };
+    let mut events = vec![interpret_delta(choice.delta)];
     if let Some(reason) = choice.finish_reason {
-        return StreamEvent::Finished(FinishReason::from_label(reason));
+        events.push(StreamEvent::Finished(FinishReason::from_label(reason)));
     }
-    interpret_delta(choice.delta)
+    events
 }
 
 fn interpret_delta(delta: Delta) -> StreamEvent {

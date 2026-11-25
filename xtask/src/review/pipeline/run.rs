@@ -160,10 +160,23 @@ fn publish_all(
         pull_request: run.options.pull_request,
         head_sha: run.head_sha,
     };
-    let mut first_failure = Ok(());
-    for (mode, outcome) in outcomes {
-        let result = publish_findings(run.github, target, *mode, &outcome.accepted);
-        first_failure = first_failure.and(result);
+    let failures: Vec<String> = outcomes
+        .iter()
+        .filter_map(|(mode, outcome)| {
+            publish_findings(run.github, target, *mode, &outcome.accepted)
+                .err()
+                .map(|error| error.to_string())
+        })
+        .collect();
+    fail_if_any_publish_failed(&failures)
+}
+
+fn fail_if_any_publish_failed(failures: &[String]) -> Result<(), GateError> {
+    if failures.is_empty() {
+        return Ok(());
     }
-    first_failure
+    Err(ReviewError::ReviewersFailed {
+        details: failures.join("\n"),
+    }
+    .into())
 }

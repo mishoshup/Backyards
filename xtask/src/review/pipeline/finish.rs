@@ -89,7 +89,7 @@ pub fn record_status(
         state,
         description,
     };
-    report_if_failed("status update", run.github.set_status(&update))
+    run.github.set_status(&update)
 }
 
 fn update_comment_and_reactions(

@@ -16,6 +16,8 @@ pub enum ToolError {
     ReadFailed { reason: String },
     #[error("not searched, not a regular file or larger than {limit} bytes")]
     NotSearchable { limit: u64 },
+    #[error("file is larger than {limit} bytes")]
+    FileTooLarge { limit: u64 },
     #[error("only https urls are allowed")]
     OnlyHttps,
     #[error("host {host} is not an allowed documentation host")]

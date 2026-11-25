@@ -5,6 +5,8 @@ use crate::review::model::Violation;
 use crate::review::post::finding_text::describe_finding_body;
 use crate::review::post::inline_comment::PostTarget;
 
+const MAXIMUM_LISTED_PLACEMENT_FAILURES: usize = 5;
+
 pub const MAXIMUM_SUMMARY_FINDINGS: usize = 100;
 
 #[must_use]
@@ -46,15 +48,21 @@ pub struct InlinePlacement {
 }
 
 fn describe_placement_failures(failures: &[String]) -> String {
-    let Some(first) = failures.first() else {
+    if failures.is_empty() {
         return String::new();
-    };
+    }
     let count = pluralize(
         failures.len(),
         "inline placement failed",
         "inline placements failed",
     );
-    format!("\n\n{count}. First error: {first}")
+    let listed = failures
+        .iter()
+        .take(MAXIMUM_LISTED_PLACEMENT_FAILURES)
+        .map(|failure| format!("- {failure}"))
+        .collect::<Vec<_>>()
+        .join("\n");
+    format!("\n\n{count}:\n{listed}")
 }
 
 pub fn post_summary_comment(

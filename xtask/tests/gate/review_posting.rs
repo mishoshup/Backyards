@@ -18,10 +18,24 @@ struct FakeGh {
 
 impl FakeGh {
     fn install(directory: &Path, failing_marker: &str, output: &str) -> Self {
+        Self::install_failing_with(
+            directory,
+            failing_marker,
+            output,
+            "gh: Bad Gateway (HTTP 502)",
+        )
+    }
+
+    fn install_failing_with(
+        directory: &Path,
+        failing_marker: &str,
+        output: &str,
+        failure_message: &str,
+    ) -> Self {
         let program = directory.join("fake-gh");
         let log = directory.join("gh-calls.log");
         let script = format!(
-            "#!/bin/sh\nprintf '%s\\n<<END>>\\n' \"$*\" >> '{}'\ncase \"$*\" in *'{failing_marker}'*) exit 1;; esac\nprintf '%s' '{output}'\n",
+            "#!/bin/sh\nprintf '%s\\n<<END>>\\n' \"$*\" >> '{}'\ncase \"$*\" in *'{failing_marker}'*) echo '{failure_message}' >&2; exit 1;; esac\nprintf '%s' '{output}'\n",
             log.display()
         );
         std::fs::write(&program, script).unwrap();
@@ -86,6 +100,24 @@ fn valid_findings_are_posted_inline_with_footer_and_commit() {
     assert!(calls[0].contains(&format!("commit_id={HEAD_SHA}")));
     assert!(calls[0].contains("Low confidence: STYLE-1 problem at 3"));
     assert!(calls[0].contains(&build_footer("owner/repository", HEAD_SHA)));
+}
+
+#[test]
+fn permanent_client_errors_are_not_retried() {
+    let fixture = Fixture::create();
+    let fake = FakeGh::install_failing_with(
+        fixture.path(),
+        "pulls/7/comments",
+        "",
+        "gh: Validation Failed (HTTP 422)",
+    );
+    let github = fake.github(fixture.path());
+    let findings = [violation("src/a.rs", 3, Confidence::High)];
+    publish_findings(&github, target(), ReviewerMode::Holistic, &findings).unwrap();
+    let calls = fake.calls();
+    assert_eq!(calls.len(), 2);
+    assert!(calls[0].contains("pulls/7/comments"));
+    assert!(calls[1].contains("issues/7/comments"));
 }
 
 #[test]

@@ -50,7 +50,7 @@ impl GitHub {
         std::thread::park_timeout(self.posting_pause);
         let mut result = self.api(route_suffix, options);
         for attempt in 1..=POST_RETRIES {
-            if result.is_ok() {
+            if !result.as_ref().is_err_and(is_transient_failure) {
                 break;
             }
             std::thread::park_timeout(self.retry_backoff * attempt);
@@ -65,16 +65,33 @@ impl GitHub {
         options: &[&str],
         limit: usize,
     ) -> Result<String, GateError> {
-        let route = format!("repos/{}/{route_suffix}", self.repository);
-        let mut arguments = vec!["api", route.as_str()];
-        arguments.extend_from_slice(options);
+        let route = self.route(route_suffix);
+        let arguments = api_arguments(&route, options);
         capture_command_limited(&self.directory, &self.program, &arguments, limit)
     }
 
     pub fn api(&self, route_suffix: &str, options: &[&str]) -> Result<String, GateError> {
-        let route = format!("repos/{}/{route_suffix}", self.repository);
-        let mut arguments = vec!["api", route.as_str()];
-        arguments.extend_from_slice(options);
-        self.call(&arguments)
+        let route = self.route(route_suffix);
+        self.call(&api_arguments(&route, options))
     }
+
+    fn route(&self, route_suffix: &str) -> String {
+        format!("repos/{}/{route_suffix}", self.repository)
+    }
+}
+
+fn api_arguments<'argument>(
+    route: &'argument str,
+    options: &[&'argument str],
+) -> Vec<&'argument str> {
+    let mut arguments = vec!["api", route];
+    arguments.extend_from_slice(options);
+    arguments
+}
+
+fn is_transient_failure(error: &GateError) -> bool {
+    let GateError::CommandFailed { stderr, .. } = error else {
+        return true;
+    };
+    stderr.contains("HTTP 429") || stderr.contains("(HTTP 5") || stderr.contains("rate limit")
 }

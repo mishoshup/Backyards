@@ -8,4 +8,5 @@ mod run;
 
 pub use endpoint::endpoint_for;
 pub use options::CiOptions;
+pub use reviewers::{ReviewContext, load_review_context};
 pub use run::run_ci_review;

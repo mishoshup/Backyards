@@ -22,11 +22,26 @@ pub fn with_deadline<Outcome>(
     let is_settled = AtomicBool::new(false);
     std::thread::scope(|scope| {
         let watchdog = scope.spawn(|| fail_when_overdue(run, comment, &is_settled));
+        let _settle_on_exit = SettleOnExit {
+            is_settled: &is_settled,
+            watchdog: watchdog.thread().clone(),
+        };
         let outcome = work();
         wait_if_watchdog_won(&is_settled);
-        watchdog.thread().unpark();
         outcome
     })
+}
+
+struct SettleOnExit<'flag> {
+    is_settled: &'flag AtomicBool,
+    watchdog: std::thread::Thread,
+}
+
+impl Drop for SettleOnExit<'_> {
+    fn drop(&mut self) {
+        self.is_settled.store(true, Ordering::SeqCst);
+        self.watchdog.unpark();
+    }
 }
 
 fn wait_if_watchdog_won(is_settled: &AtomicBool) {

@@ -84,9 +84,15 @@ pub fn capture_command_limited(
     let description = describe_command(program, arguments);
     let mut child = spawn_with_piped_output(directory, program, arguments, &description)?;
     let stderr_drain = start_stderr_drain(&mut child);
-    let captured = read_or_discard(&mut child, limit + 1, &description)?;
+    let captured = match read_or_discard(&mut child, limit + 1, &description) {
+        Ok(captured) => captured,
+        Err(error) => {
+            join_stderr_drain(stderr_drain);
+            return Err(error);
+        }
+    };
     if captured.len() > limit {
-        discard_child(child, &description)?;
+        discard_child(child, stderr_drain, &description)?;
     } else {
         finish_child(child, stderr_drain, description)?;
     }
@@ -181,8 +187,20 @@ fn read_at_most(child: &mut Child, limit: usize, description: &str) -> Result<Ve
     Ok(captured)
 }
 
-fn discard_child(mut child: Child, description: &str) -> Result<(), GateError> {
-    kill_child(&mut child, description)
+fn discard_child(
+    mut child: Child,
+    stderr_drain: Option<JoinHandle<Vec<u8>>>,
+    description: &str,
+) -> Result<(), GateError> {
+    let killed = kill_child(&mut child, description);
+    join_stderr_drain(stderr_drain);
+    killed
+}
+
+fn join_stderr_drain(stderr_drain: Option<JoinHandle<Vec<u8>>>) {
+    if let Some(drain) = stderr_drain {
+        drop(drain.join());
+    }
 }
 
 fn kill_child(child: &mut Child, description: &str) -> Result<(), GateError> {

@@ -42,12 +42,25 @@ fn compile_glob(glob: &str) -> Result<Regex, ToolError> {
     })
 }
 
+fn translate_double_star(
+    characters: &mut std::iter::Peekable<std::str::Chars<'_>>,
+    translated: &mut String,
+) {
+    if characters.next_if_eq(&'/').is_some() {
+        translated.push_str("(?:.*/)?");
+    } else {
+        translated.push_str(".*");
+    }
+}
+
 fn translate_glob(glob: &str) -> String {
     let mut translated = String::new();
     let mut characters = glob.chars().peekable();
     while let Some(character) = characters.next() {
         match character {
-            '*' if characters.next_if_eq(&'*').is_some() => translated.push_str(".*"),
+            '*' if characters.next_if_eq(&'*').is_some() => {
+                translate_double_star(&mut characters, &mut translated);
+            }
             '*' => translated.push_str("[^/]*"),
             '?' => translated.push_str("[^/]"),
             other => translated.push_str(&regex::escape(&other.to_string())),

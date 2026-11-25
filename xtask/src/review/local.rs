@@ -2,12 +2,11 @@ use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
 use crate::report::{GateError, pluralize, write_report_line};
-use crate::review::diff::{AddedLines, parse_added_lines, read_local_diff};
+use crate::review::diff::read_local_diff;
 use crate::review::model::{Confidence, Violation, extract_json_object, parse_answer};
+use crate::review::pipeline::{ReviewContext, load_review_context};
 use crate::review::post::{ValidationOutcome, validate_answer};
-use crate::review::prompt::{
-    build_system_prompt, build_user_prompt, load_reviewer_instructions, load_rule_files,
-};
+use crate::review::prompt::{build_system_prompt, build_user_prompt, load_reviewer_instructions};
 use crate::review::worker::{ReviewerResult, run_each_reviewer_mode};
 use crate::review::{ReviewError, ReviewerMode};
 use crate::workspace::{Repository, capture_command};
@@ -21,32 +20,17 @@ pub struct LocalOptions {
     pub model: String,
 }
 
-struct LocalContext {
-    diff: String,
-    added: AddedLines,
-    rules: Vec<crate::review::RuleFile>,
-}
-
 pub fn run_local_review(repository: &Repository, options: &LocalOptions) -> Result<(), GateError> {
-    let context = load_context(repository, options)?;
+    let diff = read_local_diff(repository, &options.base_reference)?;
+    let context = load_review_context(repository, diff)?;
     let outcomes = run_both_reviewers(repository, options, &context);
     report_outcomes(&outcomes)
-}
-
-fn load_context(
-    repository: &Repository,
-    options: &LocalOptions,
-) -> Result<LocalContext, GateError> {
-    let diff = read_local_diff(repository, &options.base_reference)?;
-    let added = parse_added_lines(&diff)?;
-    let rules = load_rule_files(repository)?;
-    Ok(LocalContext { diff, added, rules })
 }
 
 fn run_both_reviewers(
     repository: &Repository,
     options: &LocalOptions,
-    context: &LocalContext,
+    context: &ReviewContext<'_>,
 ) -> Vec<ReviewerResult> {
     run_each_reviewer_mode(|mode| run_one_reviewer(repository, options, context, mode))
 }
@@ -54,7 +38,7 @@ fn run_both_reviewers(
 fn run_one_reviewer(
     repository: &Repository,
     options: &LocalOptions,
-    context: &LocalContext,
+    context: &ReviewContext<'_>,
     mode: ReviewerMode,
 ) -> Result<ValidationOutcome, GateError> {
     let instructions = load_reviewer_instructions(repository, mode)?;
