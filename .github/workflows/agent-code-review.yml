@@ -55,7 +55,7 @@ jobs:
 
       - name: Skip when this commit is already reviewed
         id: skip
-        run: .github/scripts/review/should-skip-review.sh "${PR_NUMBER}" "${STATUS_CONTEXT}"
+        run: .github/scripts/review/should-skip-review.sh "${PR_NUMBER}" "${STATUS_CONTEXT}" "${{ github.event_name }}"
 
       - name: Select reviewable paths
         if: steps.skip.outputs.skip != 'true'
@@ -87,8 +87,12 @@ jobs:
         run: scripts/review/run-review.sh holistic
 
       - name: Record review completion
-        if: steps.skip.outputs.skip != 'true' && (steps.filter.outputs.code != 'true' || (steps.inline-review.outcome == 'success' && steps.holistic-review.outcome == 'success'))
+        if: steps.skip.outputs.skip != 'true' && steps.filter.outputs.code == 'true' && steps.inline-review.outcome == 'success' && steps.holistic-review.outcome == 'success'
         run: .github/scripts/review/record-review-complete.sh "${{ steps.skip.outputs.head_sha }}" "${STATUS_CONTEXT}" "Reviewed at this commit - comment @agent review to re-run"
+
+      - name: Record that no reviewable files changed
+        if: steps.skip.outputs.skip != 'true' && steps.filter.outputs.code != 'true'
+        run: .github/scripts/review/record-review-complete.sh "${{ steps.skip.outputs.head_sha }}" "${STATUS_CONTEXT}" "Skipped: no reviewable files changed"
 
       - name: Remove the in-progress indicator
         if: always() && steps.skip.outputs.skip != 'true'
