@@ -19,13 +19,18 @@ impl Fixture {
         let root =
             std::env::temp_dir().join(format!("xtask-fixture-{}-{number}", std::process::id()));
         std::fs::create_dir_all(&root).unwrap();
+        let fixture = Self { root };
+        fixture.initialize_git();
+        fixture
+    }
+
+    fn initialize_git(&self) {
         let status = Command::new("git")
             .args(["init", "--quiet"])
-            .current_dir(&root)
+            .current_dir(&self.root)
             .status()
             .unwrap();
         assert!(status.success());
-        Self { root }
     }
 
     pub fn write(&self, relative: &str, content: &str) {

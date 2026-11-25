@@ -1,4 +1,4 @@
-use crate::support::{CLEAN_MANIFEST, Fixture, any_message_contains, error_messages};
+use crate::fixture::{CLEAN_MANIFEST, Fixture, any_message_contains, error_messages};
 use xtask::checks::check_policy;
 
 fn clean_fixture() -> Fixture {

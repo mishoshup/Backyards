@@ -38,6 +38,8 @@ pub enum GateError {
         pattern: String,
         source: regex::Error,
     },
+    #[error("failed stages: {}", names.join(", "))]
+    StagesFailed { names: Vec<&'static str> },
     #[error("{area}: {}", crate::report::pluralize(*count, "violation", "violations"))]
     Violations { area: &'static str, count: usize },
 }

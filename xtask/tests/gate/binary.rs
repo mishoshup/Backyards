@@ -1,6 +1,6 @@
 use std::process::{Command, Output};
 
-use crate::support::{CLEAN_MANIFEST, Fixture};
+use crate::fixture::{CLEAN_MANIFEST, Fixture};
 
 fn run_xtask(fixture: &Fixture, arguments: &[&str]) -> Output {
     Command::new(env!("CARGO_BIN_EXE_xtask"))
@@ -36,4 +36,33 @@ fn policy_exits_nonzero_and_reports_the_violation_on_stderr() {
     let report = String::from_utf8(output.stderr).unwrap();
     assert!(report.contains("marker comment"));
     assert!(report.contains("1 violation"));
+}
+
+#[test]
+fn keep_going_names_every_failed_stage() {
+    let fixture = Fixture::create();
+    let output = run_xtask(&fixture, &["check", "--keep-going"]);
+    assert_eq!(output.status.code(), Some(1));
+    let report = String::from_utf8(output.stderr).unwrap();
+    let summary = report
+        .lines()
+        .find(|line| line.starts_with("failed stages:"))
+        .unwrap();
+    assert!(report.contains("formatting: to fix, run `cargo fmt`"));
+    assert!(summary.contains("formatting"));
+    assert!(summary.contains("lint"));
+    assert!(summary.contains("tests"));
+}
+
+#[test]
+fn fail_fast_names_the_stages_it_skipped() {
+    let fixture = Fixture::create();
+    let output = run_xtask(&fixture, &["check"]);
+    assert_eq!(output.status.code(), Some(1));
+    let report = String::from_utf8(output.stderr).unwrap();
+    let skipped = report
+        .lines()
+        .find(|line| line.starts_with("skipped stages"))
+        .unwrap();
+    assert!(skipped.contains("dependencies"));
 }

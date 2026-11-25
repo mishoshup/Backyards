@@ -54,8 +54,10 @@ pub fn write_report_line(message: &str) -> Result<(), GateError> {
 }
 
 pub fn report_findings(area: &'static str, findings: &[Finding]) -> Result<(), GateError> {
-    for finding in findings {
-        write_report_line(&finding.to_string())?;
+    let mut lines: Vec<String> = findings.iter().map(ToString::to_string).collect();
+    lines.sort();
+    for line in &lines {
+        write_report_line(line)?;
     }
     match count_errors(findings) {
         0 => Ok(()),

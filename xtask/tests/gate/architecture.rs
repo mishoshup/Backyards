@@ -1,4 +1,4 @@
-use crate::support::{
+use crate::fixture::{
     CLEAN_MANIFEST, Fixture, any_message_contains, error_messages, warning_messages,
 };
 use xtask::checks::check_architecture;

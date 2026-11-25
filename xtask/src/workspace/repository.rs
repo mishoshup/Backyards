@@ -123,7 +123,8 @@ fn parse_entry(entry: &[u8]) -> Result<PathBuf, GateError> {
         .map_err(GateError::NonUtf8Path)
 }
 
-fn has_extension(path: &Path, extensions: &[&str]) -> bool {
+#[must_use]
+pub fn has_extension(path: &Path, extensions: &[&str]) -> bool {
     path.extension()
         .and_then(|extension| extension.to_str())
         .is_some_and(|extension| extensions.contains(&extension))

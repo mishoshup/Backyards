@@ -1,4 +1,4 @@
-use crate::support::{Fixture, any_message_contains, error_messages};
+use crate::fixture::{Fixture, any_message_contains, error_messages};
 use xtask::checks::check_workflow_policy;
 
 const GOOD_WORKFLOW: &str = "permissions: {}\njobs:\n  review:\n    if: github.event.pull_request.head.repo.full_name == github.repository\n    timeout-minutes: 45\n    steps:\n      - with:\n          ref: refs/pull/1/head\n";

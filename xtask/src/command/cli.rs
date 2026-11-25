@@ -28,7 +28,11 @@ pub struct Cli {
 #[derive(Debug, Subcommand)]
 pub enum Task {
     /// Run every check the repository requires before a commit
-    Check,
+    Check {
+        /// Run every stage and report all failures at the end
+        #[arg(long = "keep-going")]
+        should_keep_going: bool,
+    },
     /// Check marker comments, em dashes, lint inheritance and opt-outs
     Policy,
     /// Check crate layering, file names and file lengths
@@ -53,7 +57,7 @@ pub enum Task {
 
 pub fn run_task(task: &Task, repository: &Repository) -> Result<(), GateError> {
     match task {
-        Task::Check => run_gate(repository),
+        Task::Check { should_keep_going } => run_gate(repository, *should_keep_going),
         Task::Policy => run_policy(repository),
         Task::Architecture => run_architecture(repository),
         Task::WorkflowPolicy => run_workflow_policy(repository),

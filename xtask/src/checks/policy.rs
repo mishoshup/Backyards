@@ -5,7 +5,7 @@ use regex::Regex;
 use crate::report::Finding;
 use crate::report::GateError;
 use crate::report::{ScanRule, describe_matches};
-use crate::workspace::{Repository, compile_pattern};
+use crate::workspace::{Repository, compile_pattern, has_extension};
 
 const AREA: &str = "policy";
 const MARKER_EXTENSIONS: [&str; 4] = ["rs", "sh", "toml", "yml"];
@@ -77,12 +77,6 @@ fn apply_text_rules(rules: &[TextRule], file: &Path, text: &str) -> Vec<Finding>
             )
         })
         .collect()
-}
-
-fn has_extension(file: &Path, extensions: &[&str]) -> bool {
-    file.extension()
-        .and_then(|extension| extension.to_str())
-        .is_some_and(|extension| extensions.contains(&extension))
 }
 
 fn check_crates_inherit_workspace_lints(
