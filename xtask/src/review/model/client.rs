@@ -3,6 +3,8 @@ use std::time::Instant;
 
 use serde_json::{Value, json};
 
+const MAXIMUM_TOOL_CALLS_PER_REPLY: usize = 32;
+
 use crate::review::error::ReviewError;
 use crate::review::model::endpoint::{
     CONNECT_TIMEOUT, ModelEndpoint, PROGRESS_INTERVAL, TOTAL_TIMEOUT,
@@ -151,16 +153,16 @@ impl StreamState {
         }
     }
 
-    fn apply(&mut self, event: StreamEvent) -> bool {
+    fn apply(&mut self, event: StreamEvent) -> Result<bool, ReviewError> {
         match event {
             StreamEvent::Content(text) => self.content.push_str(&text),
             StreamEvent::Reasoning(text) => self.record_reasoning(&text),
-            StreamEvent::ToolCalls(fragments) => self.merge_tool_calls(fragments),
+            StreamEvent::ToolCalls(fragments) => self.merge_tool_calls(fragments)?,
             StreamEvent::Finished(reason) => self.finish_reason = Some(reason),
-            StreamEvent::Done => return true,
+            StreamEvent::Done => return Ok(true),
             StreamEvent::Ignored => {}
         }
-        false
+        Ok(false)
     }
 
     fn record_reasoning(&mut self, text: &str) {
@@ -168,10 +170,12 @@ impl StreamState {
         self.reasoning_chunks += 1;
     }
 
-    fn merge_tool_calls(&mut self, fragments: Vec<ToolCallFragment>) {
+    fn merge_tool_calls(&mut self, fragments: Vec<ToolCallFragment>) -> Result<(), ReviewError> {
         for fragment in fragments {
+            reject_unbounded_index(fragment.index)?;
             self.merge_tool_call(fragment);
         }
+        Ok(())
     }
 
     fn merge_tool_call(&mut self, fragment: ToolCallFragment) {
@@ -227,6 +231,15 @@ impl StreamState {
     }
 }
 
+fn reject_unbounded_index(index: usize) -> Result<(), ReviewError> {
+    if index < MAXIMUM_TOOL_CALLS_PER_REPLY {
+        return Ok(());
+    }
+    Err(ReviewError::MalformedStreamEvent {
+        reason: format!("tool call index {index} exceeds {MAXIMUM_TOOL_CALLS_PER_REPLY}"),
+    })
+}
+
 const fn empty_tool_call() -> ToolCall {
     ToolCall {
         id: String::new(),
@@ -245,7 +258,7 @@ fn collect_reply(
     let mut state = StreamState::new();
     for line in reader.lines() {
         let line = line.map_err(|error| classify_read_error(&error))?;
-        if state.apply(parse_stream_line(&line)?) {
+        if state.apply(parse_stream_line(&line)?)? {
             break;
         }
         state.report_if_due(progress)?;

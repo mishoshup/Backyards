@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use crate::fake_model_server::{
-    FakeModelServer, Script, content_event, finish_event, reasoning_event,
+    FakeModelServer, Script, content_event, finish_event, reasoning_event, tool_call_event,
 };
 use xtask::review::{
     ChatMessage, ChatRequest, ModelClient, ModelEndpoint, ReviewError, Role, parse_answer,
@@ -110,4 +110,17 @@ fn empty_and_invalid_answers_are_failures() {
 fn low_confidence_finding_parses() {
     let answer = parse_answer("{\"violations\":[{\"ruleId\":\"A-1\",\"path\":\"a.rs\",\"line\":3,\"body\":\"A-1 x\",\"confidence\":\"low\"}]}").unwrap();
     assert_eq!(answer.violations[0].line, 3);
+}
+
+#[test]
+fn oversized_tool_call_index_is_rejected_without_allocation() {
+    let server = FakeModelServer::start(vec![Script::Respond(tool_call_event(
+        1_000_000_000,
+        "call",
+        "grep",
+        "{}",
+    ))]);
+    let error = ask(&client_for(&server)).unwrap_err();
+    assert!(matches!(error, ReviewError::MalformedStreamEvent { .. }));
+    server.finish();
 }

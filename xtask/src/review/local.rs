@@ -13,7 +13,8 @@ use crate::review::worker::join_worker;
 use crate::review::{ALL_REVIEWER_MODES, ReviewError, ReviewerMode};
 use crate::workspace::{Repository, capture_command};
 
-const ATTACHMENT_REQUEST: &str = "Follow the instructions in the attached file.";
+const HOLISTIC_REQUEST: &str = "Follow the instructions in the attached file.";
+const INLINE_REQUEST: &str = "Follow the instructions in the attached file. The file holds the diff and every rule, so do not call tools or read other files. Answer with the JSON object only.";
 
 #[derive(Debug, Clone)]
 pub struct LocalOptions {
@@ -71,7 +72,7 @@ fn run_one_reviewer(
     let system = build_system_prompt(&instructions, mode, &context.rules);
     let user = build_user_prompt(mode, &context.diff);
     let prompt_path = write_prompt_file(mode, &format!("{system}\n\n{user}"))?;
-    let output = run_opencode(repository, options, &prompt_path);
+    let output = run_opencode(repository, options, mode, &prompt_path);
     remove_prompt_file(&prompt_path)?;
     let answer = parse_opencode_answer(&output?)?;
     let allowed = allowed_rule_identifiers(&context.rules);
@@ -106,6 +107,7 @@ fn remove_prompt_file(path: &Path) -> Result<(), GateError> {
 fn run_opencode(
     repository: &Repository,
     options: &LocalOptions,
+    mode: ReviewerMode,
     prompt_path: &Path,
 ) -> Result<String, GateError> {
     let attachment = prompt_path.to_string_lossy();
@@ -118,7 +120,7 @@ fn run_opencode(
             &options.model,
             "-f",
             &attachment,
-            ATTACHMENT_REQUEST,
+            attachment_request(mode),
         ],
         &[0],
     )
@@ -186,4 +188,11 @@ fn describe_violation(violation: &Violation) -> String {
         "  {}:{} {}{marker}: {}",
         violation.path, violation.line, violation.rule_identifier, violation.body
     )
+}
+
+const fn attachment_request(mode: ReviewerMode) -> &'static str {
+    match mode {
+        ReviewerMode::Inline => INLINE_REQUEST,
+        ReviewerMode::Holistic => HOLISTIC_REQUEST,
+    }
 }
