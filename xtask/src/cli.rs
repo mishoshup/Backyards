@@ -10,8 +10,17 @@ use crate::pull_request::{check_pull_request_description, check_pull_request_nam
 use crate::repository::Repository;
 
 #[derive(Debug, Parser)]
-#[command(name = "xtask", about = "Repository tooling for Backyards")]
+#[command(
+    name = "xtask",
+    about = "Repository tooling for Backyards",
+    version,
+    propagate_version = true
+)]
 pub struct Cli {
+    /// Repository to check, defaults to the repository containing xtask
+    #[arg(long, global = true, env = "XTASK_REPOSITORY_ROOT")]
+    pub repository_root: Option<PathBuf>,
+
     #[command(subcommand)]
     pub task: Task,
 }

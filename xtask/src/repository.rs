@@ -14,7 +14,7 @@ pub struct Repository {
 
 impl Repository {
     #[must_use]
-    pub const fn at(root: PathBuf) -> Self {
+    pub const fn rooted_at(root: PathBuf) -> Self {
         Self { root }
     }
 
@@ -83,6 +83,7 @@ impl Repository {
             Err(GateError::CommandFailed {
                 command: "git ls-files".to_owned(),
                 status: output.status,
+                stderr: String::from_utf8_lossy(&output.stderr).trim().to_owned(),
             })
         }
     }

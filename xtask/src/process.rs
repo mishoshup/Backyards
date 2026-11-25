@@ -21,6 +21,7 @@ pub fn run_command(directory: &Path, program: &str, arguments: &[&str]) -> Resul
         Err(GateError::CommandFailed {
             command: description,
             status,
+            stderr: "see the output above".to_owned(),
         })
     }
 }

@@ -25,28 +25,31 @@ pub fn check_workflow_policy(repository: &Repository) -> Result<Vec<Finding>, Ga
     Ok(findings)
 }
 
-fn violation(message: &str) -> Vec<Finding> {
+fn create_violation(message: &str) -> Vec<Finding> {
     vec![Finding::error(AREA, message.to_owned())]
 }
 
 fn check_runs_are_not_cancelled(workflow: &str) -> Vec<Finding> {
     if workflow.contains("cancel-in-progress: true") {
-        return violation("review runs must not cancel in progress");
+        return create_violation("review runs must not cancel in progress");
     }
     Vec::new()
 }
 
 fn check_timeout_covers_worst_case(workflow: &str) -> Result<Vec<Finding>, GateError> {
     let pattern = compile_pattern(TIMEOUT_PATTERN)?;
-    let longest = pattern
+    let Ok(timeouts) = pattern
         .captures_iter(workflow)
-        .filter_map(|captures| captures[1].parse::<u32>().ok())
-        .max()
-        .unwrap_or(0);
+        .map(|captures| captures[1].parse::<u32>())
+        .collect::<Result<Vec<u32>, _>>()
+    else {
+        return Ok(create_violation("review timeout is not a valid number"));
+    };
+    let longest = timeouts.into_iter().max().unwrap_or(0);
     if longest >= MINIMUM_TIMEOUT_MINUTES {
         return Ok(Vec::new());
     }
-    Ok(violation(&format!(
+    Ok(create_violation(&format!(
         "review timeout must be at least {MINIMUM_TIMEOUT_MINUTES} minutes"
     )))
 }
@@ -58,7 +61,7 @@ fn check_default_permissions_are_empty(workflow: &str) -> Vec<Finding> {
     {
         return Vec::new();
     }
-    violation("workflow default permissions must be empty")
+    create_violation("workflow default permissions must be empty")
 }
 
 fn check_reviewed_commit_is_pinned(
@@ -67,11 +70,13 @@ fn check_reviewed_commit_is_pinned(
 ) -> Result<Vec<Finding>, GateError> {
     let mut findings = Vec::new();
     if !workflow.contains("ref: refs/pull/") {
-        findings.extend(violation("checkout must name the pull request ref"));
+        findings.extend(create_violation("checkout must name the pull request ref"));
     }
     let skip_script = repository.read_text(Path::new(SKIP_SCRIPT))?;
     if !skip_script.contains("rev-parse HEAD") {
-        findings.extend(violation("head SHA must come from the checked-out commit"));
+        findings.extend(create_violation(
+            "head SHA must come from the checked-out commit",
+        ));
     }
     Ok(findings)
 }
@@ -80,7 +85,7 @@ fn check_fork_pull_requests_are_refused(workflow: &str) -> Vec<Finding> {
     if workflow.contains("head.repo.full_name == github.repository") {
         return Vec::new();
     }
-    violation("fork pull requests must be refused")
+    create_violation("fork pull requests must be refused")
 }
 
 fn check_allowlist_is_present(repository: &Repository) -> Result<Vec<Finding>, GateError> {
@@ -88,7 +93,9 @@ fn check_allowlist_is_present(repository: &Repository) -> Result<Vec<Finding>, G
     if listed.iter().any(|path| path == Path::new(ALLOWLIST)) {
         return Ok(Vec::new());
     }
-    Ok(violation("allowed-fetch-hosts.txt must be listed by git"))
+    Ok(create_violation(
+        "allowed-fetch-hosts.txt must be listed by git",
+    ))
 }
 
 fn check_local_review_attaches_prompt_file(
@@ -98,5 +105,7 @@ fn check_local_review_attaches_prompt_file(
     if script.contains("-f \"$") {
         return Ok(Vec::new());
     }
-    Ok(violation("local review must attach the prompt as a file"))
+    Ok(create_violation(
+        "local review must attach the prompt as a file",
+    ))
 }

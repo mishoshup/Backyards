@@ -1,7 +1,5 @@
 use std::path::{Path, PathBuf};
 
-use regex::Regex;
-
 use crate::error::GateError;
 use crate::finding::Finding;
 use crate::line_scan::{ScanRule, report_matching_lines};
@@ -59,11 +57,10 @@ fn find_runtime_outside_binaries(
         .cloned()
         .collect();
     let pattern = compile_pattern(RUNTIME_MACRO_PATTERN)?;
-    scan_files(
+    report_matching_lines(
         repository,
-        "runtime macro outside a binary entry point",
+        &ScanRule::new(AREA, "runtime macro outside a binary entry point", &pattern),
         &library_files,
-        &pattern,
     )
 }
 
@@ -77,11 +74,14 @@ fn find_platform_checks_outside_platform(
         .cloned()
         .collect();
     let pattern = compile_pattern(PLATFORM_CHECK_PATTERN)?;
-    scan_files(
+    report_matching_lines(
         repository,
-        "operating system check outside a platform module",
+        &ScanRule::new(
+            AREA,
+            "operating system check outside a platform module",
+            &pattern,
+        ),
         &outside_platform,
-        &pattern,
     )
 }
 
@@ -116,18 +116,4 @@ fn describe_length(source: &Path, line_count: usize) -> Option<Finding> {
             ),
         )
     })
-}
-
-fn scan_files(
-    repository: &Repository,
-    heading: &str,
-    files: &[PathBuf],
-    pattern: &Regex,
-) -> Result<Vec<Finding>, GateError> {
-    let rule = ScanRule {
-        area: AREA,
-        heading,
-        pattern,
-    };
-    report_matching_lines(repository, &rule, files)
 }

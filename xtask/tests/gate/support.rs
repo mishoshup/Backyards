@@ -34,8 +34,12 @@ impl Fixture {
         std::fs::write(path, content).unwrap();
     }
 
+    pub fn path(&self) -> &std::path::Path {
+        &self.root
+    }
+
     pub fn repository(&self) -> Repository {
-        Repository::at(self.root.clone())
+        Repository::rooted_at(self.root.clone())
     }
 }
 

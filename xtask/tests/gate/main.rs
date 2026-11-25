@@ -1,6 +1,8 @@
 #[cfg(test)]
 mod architecture;
 #[cfg(test)]
+mod binary;
+#[cfg(test)]
 mod cli;
 #[cfg(test)]
 mod commit_message;

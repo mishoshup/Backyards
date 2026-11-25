@@ -6,9 +6,15 @@ use xtask::cli::{Cli, run_task};
 use xtask::finding::write_report_line;
 use xtask::repository::Repository;
 
+const REPORT_WRITE_FAILURE_STATUS: u8 = 2;
+
 fn main() -> ExitCode {
     let cli = Cli::parse();
-    let repository = Repository::at(locate_repository_root());
+    let repository = Repository::rooted_at(
+        cli.repository_root
+            .clone()
+            .unwrap_or_else(locate_repository_root),
+    );
     match run_task(&cli.task, &repository) {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) => report_failure(&error.to_string()),
@@ -23,6 +29,7 @@ fn locate_repository_root() -> std::path::PathBuf {
 
 fn report_failure(message: &str) -> ExitCode {
     match write_report_line(message) {
-        Ok(()) | Err(_) => ExitCode::FAILURE,
+        Ok(()) => ExitCode::FAILURE,
+        Err(_) => ExitCode::from(REPORT_WRITE_FAILURE_STATUS),
     }
 }

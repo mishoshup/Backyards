@@ -1,7 +1,5 @@
 use std::path::PathBuf;
 
-use regex::Regex;
-
 use crate::error::GateError;
 use crate::finding::Finding;
 use crate::line_scan::{ScanRule, report_matching_lines};
@@ -12,6 +10,7 @@ const MARKER_EXTENSIONS: [&str; 4] = ["rs", "sh", "toml", "yml"];
 const TEXT_EXTENSIONS: [&str; 6] = ["rs", "md", "toml", "sh", "json", "yml"];
 const MARKER_PATTERN: &str = r"(//|#)\s*(TODO|FIXME|HACK|XXX)\b";
 const EM_DASH_PATTERN: &str = "\u{2014}";
+// Split so the policy scan does not match this source file.
 const CARGO_INSTALL_PATTERN: &str = concat!("cargo ", "install");
 const LINT_OPT_OUT_PATTERN: &str = r"#!?\[(allow|expect)\((clippy::(unwrap_used|expect_used|panic|todo|min_ident_chars|too_many_lines|cognitive_complexity)|unsafe_code)";
 const WORKSPACE_LINTS_PATTERN: &str = r"(?m)^\[lints\]\s*\nworkspace\s*=\s*true";
@@ -29,25 +28,41 @@ pub fn check_policy(repository: &Repository) -> Result<Vec<Finding>, GateError> 
 fn check_no_marker_comments(repository: &Repository) -> Result<Vec<Finding>, GateError> {
     let files = repository.list_files(&MARKER_EXTENSIONS)?;
     let pattern = compile_pattern(MARKER_PATTERN)?;
-    scan_files(repository, "marker comment", &files, &pattern)
+    report_matching_lines(
+        repository,
+        &ScanRule::new(AREA, "marker comment", &pattern),
+        &files,
+    )
 }
 
 fn check_no_em_dashes(repository: &Repository) -> Result<Vec<Finding>, GateError> {
     let files = repository.list_files(&TEXT_EXTENSIONS)?;
     let pattern = compile_pattern(EM_DASH_PATTERN)?;
-    scan_files(repository, "em dash", &files, &pattern)
+    report_matching_lines(
+        repository,
+        &ScanRule::new(AREA, "em dash", &pattern),
+        &files,
+    )
 }
 
 fn check_no_cargo_install(repository: &Repository) -> Result<Vec<Finding>, GateError> {
     let files = repository.list_files(&TEXT_EXTENSIONS)?;
     let pattern = compile_pattern(CARGO_INSTALL_PATTERN)?;
-    scan_files(repository, "use cargo binstall instead", &files, &pattern)
+    report_matching_lines(
+        repository,
+        &ScanRule::new(AREA, "use cargo binstall instead", &pattern),
+        &files,
+    )
 }
 
 fn check_no_lint_opt_outs(repository: &Repository) -> Result<Vec<Finding>, GateError> {
     let files = list_workspace_sources(repository)?;
     let pattern = compile_pattern(LINT_OPT_OUT_PATTERN)?;
-    scan_files(repository, "lint opt-out", &files, &pattern)
+    report_matching_lines(
+        repository,
+        &ScanRule::new(AREA, "lint opt-out", &pattern),
+        &files,
+    )
 }
 
 fn check_crates_inherit_workspace_lints(
@@ -91,18 +106,4 @@ fn list_member_manifests(repository: &Repository) -> Result<Vec<PathBuf>, GateEr
         manifests.push(tooling_manifest);
     }
     Ok(manifests)
-}
-
-fn scan_files(
-    repository: &Repository,
-    heading: &str,
-    files: &[PathBuf],
-    pattern: &Regex,
-) -> Result<Vec<Finding>, GateError> {
-    let rule = ScanRule {
-        area: AREA,
-        heading,
-        pattern,
-    };
-    report_matching_lines(repository, &rule, files)
 }

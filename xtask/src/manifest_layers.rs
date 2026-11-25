@@ -187,19 +187,9 @@ fn describe_manifest_matches(
     if !repository.has_file(manifest) {
         return Ok(Vec::new());
     }
-    scan_files(repository, heading, &[manifest.to_path_buf()], pattern)
-}
-
-fn scan_files(
-    repository: &Repository,
-    heading: &str,
-    files: &[PathBuf],
-    pattern: &Regex,
-) -> Result<Vec<Finding>, GateError> {
-    let rule = ScanRule {
-        area: AREA,
-        heading,
-        pattern,
-    };
-    report_matching_lines(repository, &rule, files)
+    report_matching_lines(
+        repository,
+        &ScanRule::new(AREA, heading, pattern),
+        &[manifest.to_path_buf()],
+    )
 }

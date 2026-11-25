@@ -13,6 +13,17 @@ pub struct ScanRule<'rule> {
     pub pattern: &'rule Regex,
 }
 
+impl<'rule> ScanRule<'rule> {
+    #[must_use]
+    pub const fn new(area: &'static str, heading: &'rule str, pattern: &'rule Regex) -> Self {
+        Self {
+            area,
+            heading,
+            pattern,
+        }
+    }
+}
+
 pub fn report_matching_lines(
     repository: &Repository,
     rule: &ScanRule,

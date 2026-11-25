@@ -18,8 +18,12 @@ pub enum GateError {
         command: String,
         source: std::io::Error,
     },
-    #[error("{command} exited with {status}")]
-    CommandFailed { command: String, status: ExitStatus },
+    #[error("{command} exited with {status}: {stderr}")]
+    CommandFailed {
+        command: String,
+        status: ExitStatus,
+        stderr: String,
+    },
     #[error("git listed a path that is not valid UTF-8: {0}")]
     NonUtf8Path(#[source] std::str::Utf8Error),
     #[error("cannot write the report: {0}")]
@@ -29,6 +33,6 @@ pub enum GateError {
         pattern: String,
         source: regex::Error,
     },
-    #[error("{area}: {count} violation(s)")]
+    #[error("{area}: {}", crate::finding::pluralize(*count, "violation", "violations"))]
     Violations { area: &'static str, count: usize },
 }

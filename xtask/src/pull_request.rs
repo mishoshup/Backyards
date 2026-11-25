@@ -1,5 +1,6 @@
 use crate::error::GateError;
 use crate::finding::Finding;
+use crate::finding::pluralize;
 use crate::repository::compile_pattern;
 
 const NAMING_AREA: &str = "pull request naming";
@@ -24,7 +25,7 @@ pub fn check_pull_request_description(body: &str) -> Result<Vec<Finding>, GateEr
     Ok(findings)
 }
 
-fn naming_error(message: String) -> Vec<Finding> {
+fn create_naming_error(message: String) -> Vec<Finding> {
     vec![Finding::error(NAMING_AREA, message)]
 }
 
@@ -35,7 +36,7 @@ fn check_title_format(title: &str) -> Result<Vec<Finding>, GateError> {
     if pattern.is_match(title) {
         return Ok(Vec::new());
     }
-    Ok(naming_error(format!(
+    Ok(create_naming_error(format!(
         "title \"{title}\" must match <type>(<scope>): <subject> without a trailing period"
     )))
 }
@@ -45,7 +46,7 @@ fn check_title_length(title: &str) -> Vec<Finding> {
     if length <= MAXIMUM_TITLE_LENGTH {
         return Vec::new();
     }
-    naming_error(format!(
+    create_naming_error(format!(
         "title has {length} characters, the limit is {MAXIMUM_TITLE_LENGTH}"
     ))
 }
@@ -55,7 +56,7 @@ fn check_branch_format(branch: &str) -> Result<Vec<Finding>, GateError> {
     if pattern.is_match(branch) {
         return Ok(Vec::new());
     }
-    Ok(naming_error(format!(
+    Ok(create_naming_error(format!(
         "branch \"{branch}\" must match <type>/<short-description> in lowercase hyphens"
     )))
 }
@@ -66,7 +67,7 @@ fn check_branch_type_matches_title(title: &str, branch: &str) -> Vec<Finding> {
     if title_type == branch_type {
         return Vec::new();
     }
-    naming_error(format!(
+    create_naming_error(format!(
         "title type \"{title_type}\" differs from branch type \"{branch_type}\""
     ))
 }
@@ -87,6 +88,9 @@ fn check_checklist_complete(body: &str) -> Result<Vec<Finding>, GateError> {
     }
     Ok(vec![Finding::error(
         DESCRIPTION_AREA,
-        format!("{unchecked} checklist box(es) unchecked, check each or write n/a after it"),
+        format!(
+            "{} unchecked, check each or write n/a after it",
+            pluralize(unchecked, "checklist box", "checklist boxes")
+        ),
     )])
 }

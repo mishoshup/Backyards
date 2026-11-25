@@ -36,6 +36,12 @@ impl Finding {
 }
 
 #[must_use]
+pub fn pluralize(count: usize, singular: &str, plural: &str) -> String {
+    let noun = if count == 1 { singular } else { plural };
+    format!("{count} {noun}")
+}
+
+#[must_use]
 pub fn count_errors(findings: &[Finding]) -> usize {
     findings
         .iter()
@@ -49,7 +55,7 @@ pub fn write_report_line(message: &str) -> Result<(), GateError> {
 
 pub fn report_findings(area: &'static str, findings: &[Finding]) -> Result<(), GateError> {
     for finding in findings {
-        write_report_line(&format_finding(finding))?;
+        write_report_line(&finding.to_string())?;
     }
     match count_errors(findings) {
         0 => Ok(()),
@@ -57,9 +63,11 @@ pub fn report_findings(area: &'static str, findings: &[Finding]) -> Result<(), G
     }
 }
 
-fn format_finding(finding: &Finding) -> String {
-    match finding.severity {
-        Severity::Error => format!("{}: {}", finding.area, finding.message),
-        Severity::Warning => format!("{}: warning: {}", finding.area, finding.message),
+impl std::fmt::Display for Finding {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.severity {
+            Severity::Error => write!(formatter, "{}: {}", self.area, self.message),
+            Severity::Warning => write!(formatter, "{}: warning: {}", self.area, self.message),
+        }
     }
 }
