@@ -26,7 +26,7 @@ pub fn run_ci_review(repository: &Repository, options: &CiOptions) -> Result<(),
                 },
                 StatusState::Success,
                 "Skipped - no reviewable files changed",
-            );
+            )?;
             report("no reviewable files changed; skipping")
         }
         RunDecision::Proceed => run_reviewed(repository, &github, options, &head_sha),
@@ -67,12 +67,9 @@ fn run_reviewed(
     };
     let comment = start_progress(run)?;
     match with_deadline(run, &comment, || review_and_publish(repository, run)) {
-        Ok(summaries) => {
-            finish_success(run, &comment, &summaries);
-            Ok(())
-        }
+        Ok(summaries) => finish_success(run, &comment, &summaries),
         Err(error) => {
-            finish_failure(run, &comment, &error.to_string());
+            finish_failure(run, &comment, &error.to_string())?;
             Err(error)
         }
     }
@@ -84,7 +81,7 @@ fn start_progress(run: ReviewRun<'_>) -> Result<ProgressComment, GateError> {
         .create_progress_comment(run.options.pull_request, run.head_sha)?;
     run.github
         .add_comment_reaction(&comment.identifier, "eyes")?;
-    record_status(run, StatusState::Pending, "Review in progress");
+    record_status(run, StatusState::Pending, "Review in progress")?;
     Ok(comment)
 }
 

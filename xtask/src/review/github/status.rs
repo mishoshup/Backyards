@@ -60,7 +60,7 @@ impl GitHub {
             "-f",
             &description_field,
         ];
-        let target_field = run_url().map(|url| format!("target_url={url}"));
+        let target_field = run_url()?.map(|url| format!("target_url={url}"));
         if let Some(field) = &target_field {
             options.extend(["-f", field]);
         }
@@ -92,9 +92,15 @@ impl GitHub {
     }
 }
 
-fn run_url() -> Option<String> {
-    let server = std::env::var("GITHUB_SERVER_URL").ok()?;
-    let repository = std::env::var("GITHUB_REPOSITORY").ok()?;
-    let run = std::env::var("GITHUB_RUN_ID").ok()?;
-    Some(format!("{server}/{repository}/actions/runs/{run}"))
+fn run_url() -> Result<Option<String>, ReviewError> {
+    let Ok(run) = std::env::var("GITHUB_RUN_ID") else {
+        return Ok(None);
+    };
+    let server = require_environment("GITHUB_SERVER_URL")?;
+    let repository = require_environment("GITHUB_REPOSITORY")?;
+    Ok(Some(format!("{server}/{repository}/actions/runs/{run}")))
+}
+
+fn require_environment(name: &'static str) -> Result<String, ReviewError> {
+    std::env::var(name).map_err(|_missing| ReviewError::MissingEnvironment { name })
 }

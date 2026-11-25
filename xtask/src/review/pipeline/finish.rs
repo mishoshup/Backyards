@@ -1,4 +1,4 @@
-use crate::report::write_report_line;
+use crate::report::{GateError, write_report_line};
 use crate::review::ReviewerMode;
 use crate::review::github::{GitHub, ProgressComment, StatusState, StatusUpdate};
 use crate::review::pipeline::options::ReviewRun;
@@ -41,7 +41,11 @@ pub fn describe_summary(summary: &ReviewSummary) -> String {
     )
 }
 
-pub fn finish_success(run: ReviewRun<'_>, comment: &ProgressComment, summaries: &[ReviewSummary]) {
+pub fn finish_success(
+    run: ReviewRun<'_>,
+    comment: &ProgressComment,
+    summaries: &[ReviewSummary],
+) -> Result<(), GateError> {
     let lines: Vec<String> = summaries.iter().map(describe_summary).collect();
     let body = format!(
         "Agent review of {}: completed\n\n- {}",
@@ -49,24 +53,32 @@ pub fn finish_success(run: ReviewRun<'_>, comment: &ProgressComment, summaries: 
         lines.join("\n- ")
     );
     let is_clean = summaries.iter().all(|summary| summary.accepted == 0);
-    update_comment_and_reactions(run.github, comment, &body, is_clean);
+    update_comment_and_reactions(run.github, comment, &body, is_clean)?;
     record_status(
         run,
         StatusState::Success,
         "Reviewed at this commit - comment /agent-review to re-run",
-    );
+    )
 }
 
-pub fn finish_failure(run: ReviewRun<'_>, comment: &ProgressComment, reason: &str) {
+pub fn finish_failure(
+    run: ReviewRun<'_>,
+    comment: &ProgressComment,
+    reason: &str,
+) -> Result<(), GateError> {
     let body = format!(
-        "Agent review of {}: did not complete\n\n{reason}\n\nNothing was posted.",
+        "Agent review of {}: did not complete\n\n{reason}\n\nComments posted before the failure remain on the pull request.",
         ProgressComment::short_sha(run.head_sha)
     );
-    update_comment_and_reactions(run.github, comment, &body, false);
-    record_status(run, StatusState::Failure, "Review did not complete");
+    update_comment_and_reactions(run.github, comment, &body, false)?;
+    record_status(run, StatusState::Failure, "Review did not complete")
 }
 
-pub fn record_status(run: ReviewRun<'_>, state: StatusState, description: &str) {
+pub fn record_status(
+    run: ReviewRun<'_>,
+    state: StatusState,
+    description: &str,
+) -> Result<(), GateError> {
     let context = run.options.status_context();
     let update = StatusUpdate {
         head_sha: run.head_sha,
@@ -74,7 +86,7 @@ pub fn record_status(run: ReviewRun<'_>, state: StatusState, description: &str) 
         state,
         description,
     };
-    report_if_failed("status update", run.github.set_status(&update));
+    report_if_failed("status update", run.github.set_status(&update))
 }
 
 fn update_comment_and_reactions(
@@ -82,28 +94,30 @@ fn update_comment_and_reactions(
     comment: &ProgressComment,
     body: &str,
     approve: bool,
-) {
+) -> Result<(), GateError> {
     report_if_failed(
         "progress comment update",
         github.update_progress_comment(comment, body),
-    );
+    )?;
     report_if_failed(
         "in-progress reaction removal",
         github.remove_comment_reaction(&comment.identifier, "eyes", BOT_LOGIN),
-    );
+    )?;
     if approve {
         report_if_failed(
             "approval reaction",
             github.add_comment_reaction(&comment.identifier, "+1"),
-        );
+        )?;
     }
+    Ok(())
 }
 
 fn report_if_failed<Value, Failure: std::fmt::Display>(
     action: &str,
     result: Result<Value, Failure>,
-) {
-    if let Err(error) = result {
-        write_report_line(&format!("warning: {action} failed: {error}")).ok();
+) -> Result<(), GateError> {
+    match result {
+        Ok(_) => Ok(()),
+        Err(error) => write_report_line(&format!("warning: {action} failed: {error}")),
     }
 }

@@ -13,21 +13,29 @@ pub fn with_deadline<Outcome>(
     comment: &ProgressComment,
     work: impl FnOnce() -> Outcome,
 ) -> Outcome {
-    let finished = AtomicBool::new(false);
+    let settled = AtomicBool::new(false);
     std::thread::scope(|scope| {
-        let watchdog = scope.spawn(|| fail_when_overdue(run, comment, &finished));
+        let watchdog = scope.spawn(|| fail_when_overdue(run, comment, &settled));
         let outcome = work();
-        finished.store(true, Ordering::SeqCst);
+        wait_if_watchdog_won(&settled);
         watchdog.thread().unpark();
         outcome
     })
 }
 
-fn fail_when_overdue(run: ReviewRun<'_>, comment: &ProgressComment, finished: &AtomicBool) {
+fn wait_if_watchdog_won(settled: &AtomicBool) {
+    if settled.swap(true, Ordering::SeqCst) {
+        loop {
+            std::thread::park();
+        }
+    }
+}
+
+fn fail_when_overdue(run: ReviewRun<'_>, comment: &ProgressComment, settled: &AtomicBool) {
     let deadline = Instant::now() + REVIEW_DEADLINE;
-    while !finished.load(Ordering::SeqCst) {
+    while !settled.load(Ordering::SeqCst) {
         let remaining = deadline.saturating_duration_since(Instant::now());
-        if remaining.is_zero() {
+        if remaining.is_zero() && !settled.swap(true, Ordering::SeqCst) {
             abandon_review(run, comment);
         }
         std::thread::park_timeout(remaining);
@@ -35,6 +43,6 @@ fn fail_when_overdue(run: ReviewRun<'_>, comment: &ProgressComment, finished: &A
 }
 
 fn abandon_review(run: ReviewRun<'_>, comment: &ProgressComment) -> ! {
-    finish_failure(run, comment, DEADLINE_REASON);
-    std::process::exit(1)
+    let exit_code = finish_failure(run, comment, DEADLINE_REASON).map_or(2, |()| 1);
+    std::process::exit(exit_code)
 }

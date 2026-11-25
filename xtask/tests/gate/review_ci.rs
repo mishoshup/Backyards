@@ -160,11 +160,9 @@ fn failed_model_call_posts_nothing_and_marks_the_status_failed() {
     assert_eq!(count_calls(&run, "pulls/7/comments"), 0);
     assert_eq!(count_calls(&run, "state=failure"), 1);
     assert_eq!(count_calls(&run, "state=success"), 0);
-    assert!(
-        run.calls
-            .iter()
-            .any(|call| call.contains("did not complete") && call.contains("Nothing was posted"))
-    );
+    assert!(run.calls.iter().any(
+        |call| call.contains("did not complete") && call.contains("remain on the pull request")
+    ));
 }
 
 #[test]
