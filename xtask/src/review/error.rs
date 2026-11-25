@@ -34,14 +34,23 @@ pub enum ReviewError {
     MalformedStreamEvent { reason: String },
     #[error("{details}")]
     ReviewersFailed { details: String },
-    #[error("environment variable {name} is unusable: {source}")]
+    #[error("environment variable {name} is {reason}")]
     MissingEnvironment {
         name: &'static str,
-        source: std::env::VarError,
+        reason: &'static str,
     },
 }
 
 impl ReviewError {
+    #[must_use]
+    pub const fn unusable_environment(name: &'static str, error: &std::env::VarError) -> Self {
+        let reason = match error {
+            std::env::VarError::NotPresent => "not set",
+            std::env::VarError::NotUnicode(_) => "not valid unicode",
+        };
+        Self::MissingEnvironment { name, reason }
+    }
+
     #[must_use]
     pub const fn is_retryable(&self) -> bool {
         match self {

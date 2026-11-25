@@ -1,6 +1,9 @@
 use std::io::Read;
 use std::path::Path;
-use std::process::{Child, Command, Output, Stdio};
+use std::process::{Child, ChildStderr, Command, Output, Stdio};
+use std::thread::JoinHandle;
+
+const STDERR_CAPTURE_LIMIT: u64 = 65_536;
 
 use crate::report::GateError;
 use crate::report::write_report_line;
@@ -80,14 +83,66 @@ pub fn capture_command_limited(
 ) -> Result<String, GateError> {
     let description = describe_command(program, arguments);
     let mut child = spawn_with_piped_output(directory, program, arguments, &description)?;
-    let captured = read_at_most(&mut child, limit + 1, &description)?;
+    let stderr_drain = start_stderr_drain(&mut child);
+    let captured = read_or_discard(&mut child, limit + 1, &description)?;
     if captured.len() > limit {
         discard_child(child, &description)?;
-        return Ok(String::from_utf8_lossy(&captured).into_owned());
+    } else {
+        finish_child(child, stderr_drain, description)?;
     }
-    let output = wait_for_output(child, &description)?;
-    ensure_accepted_exit(&output, &[0], description)?;
     Ok(String::from_utf8_lossy(&captured).into_owned())
+}
+
+fn read_or_discard(
+    child: &mut Child,
+    limit: usize,
+    description: &str,
+) -> Result<Vec<u8>, GateError> {
+    match read_at_most(child, limit, description) {
+        Ok(captured) => Ok(captured),
+        Err(error) => {
+            kill_child(child, description)?;
+            Err(error)
+        }
+    }
+}
+
+fn finish_child(
+    mut child: Child,
+    stderr_drain: Option<JoinHandle<Vec<u8>>>,
+    description: String,
+) -> Result<(), GateError> {
+    let status = child.wait().map_err(|source| GateError::RunCommand {
+        command: description.clone(),
+        source,
+    })?;
+    let stderr = stderr_drain
+        .and_then(|drain| drain.join().ok())
+        .unwrap_or_default();
+    ensure_accepted_exit(
+        &Output {
+            status,
+            stdout: Vec::new(),
+            stderr,
+        },
+        &[0],
+        description,
+    )
+}
+
+fn start_stderr_drain(child: &mut Child) -> Option<JoinHandle<Vec<u8>>> {
+    let stderr = child.stderr.take()?;
+    Some(std::thread::spawn(move || read_then_discard(stderr)))
+}
+
+fn read_then_discard(mut stderr: ChildStderr) -> Vec<u8> {
+    let mut collected = Vec::new();
+    (&mut stderr)
+        .take(STDERR_CAPTURE_LIMIT)
+        .read_to_end(&mut collected)
+        .ok();
+    std::io::copy(&mut stderr, &mut std::io::sink()).ok();
+    collected
 }
 
 fn spawn_with_piped_output(
@@ -123,18 +178,13 @@ fn read_at_most(child: &mut Child, limit: usize, description: &str) -> Result<Ve
 }
 
 fn discard_child(mut child: Child, description: &str) -> Result<(), GateError> {
+    kill_child(&mut child, description)
+}
+
+fn kill_child(child: &mut Child, description: &str) -> Result<(), GateError> {
     child
         .kill()
         .and_then(|()| child.wait().map(|_| ()))
-        .map_err(|source| GateError::RunCommand {
-            command: description.to_owned(),
-            source,
-        })
-}
-
-fn wait_for_output(child: Child, description: &str) -> Result<Output, GateError> {
-    child
-        .wait_with_output()
         .map_err(|source| GateError::RunCommand {
             command: description.to_owned(),
             source,

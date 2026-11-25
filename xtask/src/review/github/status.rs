@@ -102,5 +102,5 @@ fn run_url() -> Result<Option<String>, ReviewError> {
 }
 
 fn require_environment(name: &'static str) -> Result<String, ReviewError> {
-    std::env::var(name).map_err(|source| ReviewError::MissingEnvironment { name, source })
+    std::env::var(name).map_err(|error| ReviewError::unusable_environment(name, &error))
 }

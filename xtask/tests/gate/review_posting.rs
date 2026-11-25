@@ -185,3 +185,41 @@ fn only_rust_and_policy_paths_are_reviewable() {
     let code = vec!["README.md".to_owned(), "xtask/src/main.rs".to_owned()];
     assert!(has_reviewable_path(&code).unwrap());
 }
+
+fn write_script(directory: &Path, body: &str) -> PathBuf {
+    let program = directory.join("script-gh");
+    std::fs::write(&program, format!("#!/bin/sh\n{body}\n")).unwrap();
+    std::fs::set_permissions(&program, std::fs::Permissions::from_mode(0o755)).unwrap();
+    program
+}
+
+fn github_running(program: &Path, directory: &Path) -> GitHub {
+    GitHub::with_program(
+        program.to_string_lossy().into_owned(),
+        "owner/repository".to_owned(),
+        directory.to_path_buf(),
+    )
+}
+
+#[test]
+fn limited_capture_survives_a_flooded_stderr_pipe() {
+    let fixture = Fixture::create();
+    let program = write_script(
+        fixture.path(),
+        "head -c 400000 /dev/zero | tr '\\0' 'e' >&2\necho diff-body",
+    );
+    let output = github_running(&program, fixture.path())
+        .api_limited("pulls/1", &[], 1000)
+        .unwrap();
+    assert_eq!(output.trim(), "diff-body");
+}
+
+#[test]
+fn limited_capture_stops_reading_at_the_limit() {
+    let fixture = Fixture::create();
+    let program = write_script(fixture.path(), "head -c 5000000 /dev/zero | tr '\\0' 'x'");
+    let output = github_running(&program, fixture.path())
+        .api_limited("pulls/1", &[], 1000)
+        .unwrap();
+    assert_eq!(output.len(), 1001);
+}
