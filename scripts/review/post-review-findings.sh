@@ -7,8 +7,22 @@ finding_noun() {
   if [ "$1" -eq 1 ]; then echo finding; else echo findings; fi
 }
 
+describe_count() {
+  if [ "$1" -eq 0 ]; then echo "no findings, all ok"; else echo "$1 $(finding_noun "$1")"; fi
+}
+
 record_result() {
-  echo "$1: $2 $(finding_noun "$2")" > "${RUNNER_TEMP:-/tmp}/review-result-$1"
+  echo "$1: $2" > "${RUNNER_TEMP:-/tmp}/review-result-$1"
+}
+
+has_valid_answer() {
+  jq -e '.violations | arrays' <<<"$1" > /dev/null 2>&1
+}
+
+reject_missing_answer() {
+  record_result "${review_mode}" "no answer"
+  echo "review: ${review_mode} reviewer gave no valid answer" >&2
+  exit 1
 }
 
 post_each_violation() {
@@ -31,7 +45,8 @@ post_summary_comment() {
 main() {
   local review_json
   review_json=$(cat)
-  record_result "${review_mode}" "$(jq '.violations | length' <<<"${review_json}")"
+  has_valid_answer "${review_json}" || reject_missing_answer
+  record_result "${review_mode}" "$(describe_count "$(jq '.violations | length' <<<"${review_json}")")"
   if [[ "$(jq '.violations | length' <<<"${review_json}")" -eq 0 ]]; then
     return 0
   fi
