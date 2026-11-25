@@ -5,6 +5,8 @@ use serde_json::{Value, json};
 
 const MAXIMUM_TOOL_CALLS_PER_REPLY: usize = 32;
 const MAXIMUM_ANSWER_BYTES: usize = 4_000_000;
+const MAXIMUM_REASONING_BYTES: usize = 4_000_000;
+const MAXIMUM_TOOL_ARGUMENT_BYTES: usize = 1_000_000;
 
 use crate::review::error::ReviewError;
 use crate::review::model::endpoint::{
@@ -168,7 +170,7 @@ impl StreamState {
     fn apply(&mut self, event: StreamEvent) -> Result<bool, ReviewError> {
         match event {
             StreamEvent::Content(text) => self.record_content(&text)?,
-            StreamEvent::Reasoning(text) => self.record_reasoning(&text),
+            StreamEvent::Reasoning(text) => self.record_reasoning(&text)?,
             StreamEvent::ToolCalls(fragments) => self.merge_tool_calls(fragments)?,
             StreamEvent::Finished(reason) => {
                 self.finish_reason = Some(reason);
@@ -184,29 +186,35 @@ impl StreamState {
     }
 
     fn record_content(&mut self, text: &str) -> Result<(), ReviewError> {
-        if self.content.len() + text.len() > MAXIMUM_ANSWER_BYTES {
-            return Err(ReviewError::AnswerTooLarge {
-                limit: MAXIMUM_ANSWER_BYTES,
-            });
-        }
+        reject_over_limit(
+            "answer",
+            self.content.len() + text.len(),
+            MAXIMUM_ANSWER_BYTES,
+        )?;
         self.content.push_str(text);
         Ok(())
     }
 
-    fn record_reasoning(&mut self, text: &str) {
+    fn record_reasoning(&mut self, text: &str) -> Result<(), ReviewError> {
+        reject_over_limit(
+            "reasoning",
+            self.reasoning.len() + text.len(),
+            MAXIMUM_REASONING_BYTES,
+        )?;
         self.reasoning.push_str(text);
         self.reasoning_chunks += 1;
+        Ok(())
     }
 
     fn merge_tool_calls(&mut self, fragments: Vec<ToolCallFragment>) -> Result<(), ReviewError> {
         for fragment in fragments {
             reject_unbounded_index(fragment.index)?;
-            self.merge_tool_call(fragment);
+            self.merge_tool_call(fragment)?;
         }
         Ok(())
     }
 
-    fn merge_tool_call(&mut self, fragment: ToolCallFragment) {
+    fn merge_tool_call(&mut self, fragment: ToolCallFragment) -> Result<(), ReviewError> {
         while self.tool_calls.len() <= fragment.index {
             self.tool_calls.push(empty_tool_call());
         }
@@ -218,8 +226,14 @@ impl StreamState {
             call.function.name.push_str(&name);
         }
         if let Some(arguments) = fragment.arguments {
+            reject_over_limit(
+                "tool call arguments",
+                call.function.arguments.len() + arguments.len(),
+                MAXIMUM_TOOL_ARGUMENT_BYTES,
+            )?;
             call.function.arguments.push_str(&arguments);
         }
+        Ok(())
     }
 
     fn report_if_due(&mut self, progress: &mut dyn Write) -> Result<(), ReviewError> {
@@ -262,6 +276,17 @@ impl StreamState {
             tool_calls: self.tool_calls,
         })
     }
+}
+
+const fn reject_over_limit(
+    part: &'static str,
+    projected_bytes: usize,
+    limit: usize,
+) -> Result<(), ReviewError> {
+    if projected_bytes > limit {
+        return Err(ReviewError::ModelOutputTooLarge { part, limit });
+    }
+    Ok(())
 }
 
 fn reject_unbounded_index(index: usize) -> Result<(), ReviewError> {

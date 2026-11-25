@@ -144,7 +144,7 @@ fn fail_if_any_reviewer_failed(
         .collect();
     Err(ReviewError::ReviewersFailed {
         details: format!(
-            "{}. Findings from {} were posted. Run `/agent-review` to retry.",
+            "{}. Findings from {} were posted. Run `/agent-review` to retry; after two runs the owner must use `/agent-review force`.",
             reasons.join("; "),
             pluralize(posted_reviewers, "other reviewer", "other reviewers")
         ),

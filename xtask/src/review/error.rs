@@ -26,8 +26,8 @@ pub enum ReviewError {
     ProgressWrite { reason: String },
     #[error("model stream ended with finish reason {finish_reason}")]
     ModelTruncated { finish_reason: String },
-    #[error("model answer exceeds {limit} bytes")]
-    AnswerTooLarge { limit: usize },
+    #[error("model {part} exceeds {limit} bytes")]
+    ModelOutputTooLarge { part: &'static str, limit: usize },
     #[error("model returned an empty answer")]
     EmptyAnswer,
     #[error("model answer is not valid review JSON: {reason}")]
@@ -66,7 +66,7 @@ impl ReviewError {
             | Self::MissingRuleHeading { .. }
             | Self::ModelTruncated { .. }
             | Self::EmptyAnswer
-            | Self::AnswerTooLarge { .. }
+            | Self::ModelOutputTooLarge { .. }
             | Self::InvalidAnswer { .. }
             | Self::MalformedStreamEvent { .. }
             | Self::ProgressWrite { .. }

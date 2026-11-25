@@ -111,12 +111,19 @@ fn launch_review(fixture: &Fixture, tools: &Path, server: &FakeModelServer) -> O
 
 fn run_ci(scripts: Vec<Script>) -> CiRun {
     let fixture = prepare_repository();
-    let tools = prepare_tools();
+    let tools = ToolsDirectory(prepare_tools());
     let server = FakeModelServer::start(scripts);
-    let output = launch_review(&fixture, &tools, &server);
-    let calls = read_calls(&tools.join("calls.log"));
-    std::fs::remove_dir_all(&tools).unwrap();
+    let output = launch_review(&fixture, &tools.0, &server);
+    let calls = read_calls(&tools.0.join("calls.log"));
     CiRun { output, calls }
+}
+
+struct ToolsDirectory(PathBuf);
+
+impl Drop for ToolsDirectory {
+    fn drop(&mut self) {
+        drop(std::fs::remove_dir_all(&self.0));
+    }
 }
 
 fn read_calls(log: &Path) -> Vec<String> {

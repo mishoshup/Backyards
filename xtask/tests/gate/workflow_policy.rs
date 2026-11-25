@@ -37,7 +37,7 @@ fn cancelling_review_runs_is_reported() {
 
 #[test]
 fn short_timeout_is_reported() {
-    let workflow = GOOD_WORKFLOW.replace("25", "30");
+    let workflow = GOOD_WORKFLOW.replace("25", "20");
     let findings = check_workflow_policy(&workflow_fixture(&workflow).repository()).unwrap();
     assert!(any_message_contains(
         &findings,

@@ -3,7 +3,7 @@ use std::path::Path;
 use regex::Regex;
 use serde::Deserialize;
 
-use crate::review::tools::confinement::resolve_inside_repository;
+use crate::review::tools::confinement::{resolve_inside_canonical_root, resolve_inside_repository};
 use crate::review::tools::error::ToolError;
 use crate::review::tools::limits::{
     MAXIMUM_GREP_MATCHES, MAXIMUM_SEARCHED_FILE_BYTES, render_capped_lines, truncate_output,
@@ -60,7 +60,7 @@ fn collect_confined_matches(
     pattern: &Regex,
     result: &mut SearchResult,
 ) {
-    match resolve_inside_repository(canonical_root, relative) {
+    match resolve_inside_canonical_root(canonical_root, relative) {
         Ok(resolved) => collect_file_matches(relative, &resolved, pattern, result),
         Err(error) => result.skipped.push(format!("{relative}: {error}")),
     }
