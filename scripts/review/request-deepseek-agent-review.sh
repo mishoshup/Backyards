@@ -9,6 +9,7 @@ source scripts/review/deepseek-client.sh
 
 readonly request_timeout_seconds=120
 readonly maximum_rounds=8
+readonly MAXIMUM_MODEL_ATTEMPTS=2
 readonly MAXIMUM_LOGGED_ARGUMENT_LENGTH=120
 model="$(select_review_model holistic)"
 readonly model
@@ -38,6 +39,15 @@ call_model() {
     return 1
   fi
   printf '%s\n' "${reply%$'\n'*}"
+}
+
+call_model_with_retry() {
+  local attempt
+  for attempt in $(seq 1 "${MAXIMUM_MODEL_ATTEMPTS}"); do
+    call_model "$@" && return 0
+    echo "review: model call attempt ${attempt} of ${MAXIMUM_MODEL_ATTEMPTS} failed" >&2
+  done
+  return 1
 }
 
 append_message() {
@@ -93,7 +103,7 @@ run_rounds() {
   for round in $(seq 1 "${maximum_rounds}"); do
     echo "review: holistic round ${round}, ${SECONDS}s elapsed" >&2
     announce_remaining_rounds "${messages_file}" "${round}"
-    response=$(call_model "${messages_file}" "$(choose_tool_policy "${round}")")
+    response=$(call_model_with_retry "${messages_file}" "$(choose_tool_policy "${round}")")
     assistant_message=$(jq -c '.choices[0].message' <<<"${response}")
     append_message "${messages_file}" "${assistant_message}"
     if [[ "$(jq '(.tool_calls // []) | length' <<<"${assistant_message}")" -gt 0 ]]; then
