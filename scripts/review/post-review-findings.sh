@@ -3,6 +3,10 @@ set -euo pipefail
 
 readonly review_mode="${1:?mode required}"
 
+record_result() {
+  echo "$1: $2 finding(s)" > "${RUNNER_TEMP:-/tmp}/review-result-$1"
+}
+
 post_each_violation() {
   local violation failed=0
   while IFS= read -r violation; do
@@ -23,8 +27,8 @@ post_summary_comment() {
 main() {
   local review_json
   review_json=$(cat)
+  record_result "${review_mode}" "$(jq '.violations | length' <<<"${review_json}")"
   if [[ "$(jq '.violations | length' <<<"${review_json}")" -eq 0 ]]; then
-    .github/scripts/review/add-pull-request-reaction.sh "${PR_NUMBER}" "+1"
     return 0
   fi
   post_each_violation "${review_json}" || post_summary_comment "${review_json}"

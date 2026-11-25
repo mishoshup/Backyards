@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+readonly comment_id="${1:?comment id required}"
+readonly job_status="${2:?job status required}"
+readonly head_sha="${3:?head SHA required}"
+readonly result_directory="${RUNNER_TEMP}"
+
+read_result_line() {
+  local result_file="${result_directory}/review-result-$1"
+  if [[ -f "${result_file}" ]]; then cat "${result_file}"; else echo "$1: did not run"; fi
+}
+
+count_findings() {
+  cat "${result_directory}"/review-result-* 2>/dev/null | awk '{ total += $2 } END { print total + 0 }'
+}
+
+build_body() {
+  printf 'Agent review of %s: %s\n\n- %s\n- %s\n' "${head_sha:0:7}" "$1" "$(read_result_line inline)" "$(read_result_line holistic)"
+}
+
+update_comment() {
+  gh api -X PATCH "repos/${GITHUB_REPOSITORY}/issues/comments/${comment_id}" -f body="$1" > /dev/null
+}
+
+react_to_outcome() {
+  .github/scripts/review/remove-comment-reaction.sh "${comment_id}" "eyes" "github-actions[bot]"
+  if [[ "${job_status}" == "success" && "$(count_findings)" -eq 0 ]]; then
+    .github/scripts/review/add-comment-reaction.sh "${comment_id}" "+1"
+  fi
+}
+
+main() {
+  local outcome="completed"
+  [[ "${job_status}" == "success" ]] || outcome="did not complete (${job_status})"
+  update_comment "$(build_body "${outcome}")"
+  react_to_outcome
+}
+
+main

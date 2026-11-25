@@ -70,9 +70,10 @@ jobs:
         if: steps.skip.outputs.skip != 'true'
         run: .github/scripts/review/extract-allowed-rules.sh .agents/skills/rust-coding-standards/rules "${RUNNER_TEMP}/allowed-rules.txt"
 
-      - name: Mark review as in progress
+      - name: Post the in-progress comment
         if: steps.skip.outputs.skip != 'true'
-        run: .github/scripts/review/add-pull-request-reaction.sh "${PR_NUMBER}" "eyes"
+        id: progress
+        run: .github/scripts/review/start-review-comment.sh "${PR_NUMBER}" "${{ steps.skip.outputs.head_sha }}"
 
       - name: Run the inline review
         id: inline-review
@@ -96,6 +97,6 @@ jobs:
         if: steps.skip.outputs.skip != 'true' && steps.filter.outputs.code != 'true'
         run: .github/scripts/review/record-review-complete.sh "${{ steps.skip.outputs.head_sha }}" "${{ steps.skip.outputs.context }}" "Skipped - no reviewable files changed"
 
-      - name: Remove the in-progress indicator
+      - name: Publish the review result
         if: always() && steps.skip.outputs.skip != 'true'
-        run: .github/scripts/review/remove-pull-request-reaction.sh "${PR_NUMBER}" "eyes" "github-actions[bot]"
+        run: .github/scripts/review/finish-review-comment.sh "${{ steps.progress.outputs.comment_id }}" "${{ job.status }}" "${{ steps.skip.outputs.head_sha }}"
