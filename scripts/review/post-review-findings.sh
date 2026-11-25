@@ -12,13 +12,13 @@ record_result() {
 }
 
 post_each_violation() {
-  local violation failed=0
+  local violation has_failed=0
   while IFS= read -r violation; do
     .github/scripts/review/create-inline-comment.sh "${PULL_REQUEST_NUMBER}" \
       "$(jq -r .path <<<"${violation}")" "$(jq -r .body <<<"${violation}")" \
-      "$(jq -r .line <<<"${violation}")" "${review_mode}" "$(jq -r '.ruleId // ""' <<<"${violation}")" || failed=1
+      "$(jq -r .line <<<"${violation}")" "${review_mode}" "$(jq -r '.ruleId // ""' <<<"${violation}")" || has_failed=1
   done < <(jq -c '.violations[]' <<<"$1")
-  return "${failed}"
+  return "${has_failed}"
 }
 
 post_summary_comment() {

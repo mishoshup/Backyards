@@ -54,9 +54,22 @@ answer_tool_calls() {
   done < <(jq -c '.tool_calls[]' <<<"${assistant_message}")
 }
 
+isolate_json_object() {
+  awk 'BEGIN { depth = 0 } { for (i = 1; i <= length($0); i++) { c = substr($0, i, 1); if (c == "{") { depth++; started = 1 } if (started) printf "%s", c; if (c == "}") { depth--; if (started && depth == 0) { exit } } } if (started) printf "\n" }'
+}
+
+parse_violations() {
+  jq -ce '.violations | arrays | {violations: .}' 2>/dev/null
+}
+
 extract_violations() {
-  local content="$1"
-  grep -v '^```' <<<"${content}" | jq -ce '.violations | arrays | {violations: .}' 2>/dev/null
+  parse_violations <<<"$1" || isolate_json_object <<<"$1" | parse_violations
+}
+
+announce_remaining_rounds() {
+  if (( $2 >= maximum_rounds - 1 )); then
+    append_message "$1" '{"role":"user","content":"Stop reading. Answer now with the JSON object only, listing every finding you have confirmed."}'
+  fi
 }
 
 choose_tool_policy() {
@@ -67,6 +80,7 @@ run_rounds() {
   local messages_file="$1" round response assistant_message result
   for round in $(seq 1 "${maximum_rounds}"); do
     echo "review: holistic round ${round}, ${SECONDS}s elapsed" >&2
+    announce_remaining_rounds "${messages_file}" "${round}"
     response=$(call_model "${messages_file}" "$(choose_tool_policy "${round}")")
     assistant_message=$(jq -c '.choices[0].message' <<<"${response}")
     append_message "${messages_file}" "${assistant_message}"
