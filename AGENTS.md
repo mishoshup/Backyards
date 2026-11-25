@@ -133,7 +133,7 @@ Every change reaches `main` through a pull request. Direct pushes to `main` are 
 2. The pull request title and the commit subject use `<type>(<scope>): <subject>`: lowercase, imperative mood, at most 72 characters, no trailing period. The title type matches the branch type. Pull requests are merged by squash, so the title becomes the commit on `main`.
 3. The pull request description completes the template (problem, change, verification). Every checklist item is checked or marked n/a.
 4. Commit messages are plain, carry no `Co-Authored-By` or `Claude-Session` trailers, and use the user's own git identity.
-5. A commit, a push or a pull request requires explicit approval for that batch of changes. The owner's standing approval for the `babysit-pr` loop covers pushes to a pull request branch and the squash merge of that pull request once its review is clean. Pushes to `main` are never covered. Only named files are staged, and unrelated changes are checked first.
+5. A commit, a push or a pull request requires explicit approval for that batch of changes. The owner's standing approval for the `babysit-pr` loop covers pushes to a pull request branch only. A merge needs the owner's explicit approval after the final review report. Pushes to `main` are never covered. Only named files are staged, and unrelated changes are checked first.
 6. GitHub operations run as the `mishoshup` account. `gh auth status` must be checked first.
 7. A branch is pushed with an explicit refspec (`git push origin HEAD:refs/heads/<branch>`). Force pushes and pushes to `main` are prohibited.
 8. A pull request is updated by adding commits or by rebasing onto `main`. `main` must not be merged into the branch.

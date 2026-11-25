@@ -5,7 +5,7 @@ description: Drive a Backyards pull request from local work to merge. Covers the
 
 # Babysit a pull request
 
-The loop runs until the pull request is clean, then merges it. Pushes to the pull request branch and the final squash merge are covered by the standing approval recorded in AGENTS.md section 10 item 5. Pushes to `main` are never allowed.
+The loop runs until the pull request is clean, then reports to the owner and merges only after the owner approves. Pushes to the pull request branch are covered by the standing approval recorded in AGENTS.md section 10 item 5. Pushes to `main` are never allowed.
 
 ## Loop
 
@@ -22,7 +22,7 @@ The loop runs until the pull request is clean, then merges it. Pushes to the pul
    - The agent review status for the head commit is `success` and posted no new finding.
    - No review thread is unresolved.
    - The pull request is not a draft and its title matches `scripts/check-pull-request-naming.sh`.
-8. Re-read the final diff once, confirm the description matches it, then merge with `gh pr merge <number> --squash --delete-branch`. Report what merged and what was verified.
+8. Re-read the final diff once, confirm the description matches it, and report to the owner what was verified and what was declined. Merge with `gh pr merge <number> --squash --delete-branch` only after the owner approves.
 
 ## Review threads
 
@@ -53,4 +53,5 @@ gh api graphql -f query='mutation{resolveReviewThread(input:{threadId:"THREAD_ID
 - A failing check that is not caused by the change is reported, not hidden. Do not merge over a failing required check.
 - When the review service returns an error such as insufficient balance, stop the loop and report it. Do not merge without a completed review.
 - Wait for the review with `gh run watch <run id> --exit-status`, which blocks until the run finishes. Do not poll with sleep.
+- Stop rule: the loop ends after a review round with no finding about correctness, safety, error handling or tests. Style-only findings from that round are fixed in one last batch or declined with a reply, and the report to the owner follows without waiting for another round.
 - The pull request is updated by adding commits. Never force-push and never merge `main` into the branch.
