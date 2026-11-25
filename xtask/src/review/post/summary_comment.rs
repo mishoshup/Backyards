@@ -1,4 +1,4 @@
-use crate::report::GateError;
+use crate::report::{GateError, pluralize};
 use crate::review::ReviewerMode;
 use crate::review::github::GitHub;
 use crate::review::model::Violation;
@@ -47,10 +47,12 @@ fn describe_placement_failures(failures: &[String]) -> String {
     let Some(first) = failures.first() else {
         return String::new();
     };
-    format!(
-        "\n\n{} inline placement failed. First error: {first}",
-        failures.len()
-    )
+    let count = pluralize(
+        failures.len(),
+        "inline placement failed",
+        "inline placements failed",
+    );
+    format!("\n\n{count}. First error: {first}")
 }
 
 pub fn post_summary_comment(

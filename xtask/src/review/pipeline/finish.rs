@@ -2,7 +2,7 @@ use crate::report::{GateError, pluralize, write_report_line};
 use crate::review::ReviewerMode;
 use crate::review::github::{GitHub, ProgressComment, StatusState, StatusUpdate};
 use crate::review::pipeline::options::ReviewRun;
-use crate::review::post::ValidationOutcome;
+use crate::review::post::{DroppedFinding, ValidationOutcome};
 
 const BOT_LOGIN: &str = "github-actions[bot]";
 
@@ -10,6 +10,7 @@ pub struct ReviewSummary {
     pub mode: ReviewerMode,
     pub accepted: usize,
     pub dropped: usize,
+    pub dropped_details: Vec<String>,
 }
 
 pub fn summarize(outcomes: &[(ReviewerMode, ValidationOutcome)]) -> Vec<ReviewSummary> {
@@ -19,8 +20,16 @@ pub fn summarize(outcomes: &[(ReviewerMode, ValidationOutcome)]) -> Vec<ReviewSu
             mode: *mode,
             accepted: outcome.accepted.len(),
             dropped: outcome.dropped.len(),
+            dropped_details: outcome.dropped.iter().map(describe_dropped).collect(),
         })
         .collect()
+}
+
+fn describe_dropped(dropped: &DroppedFinding) -> String {
+    format!(
+        "  - {}:{} {}",
+        dropped.violation.path, dropped.violation.line, dropped.reason
+    )
 }
 
 pub fn describe_summary(summary: &ReviewSummary) -> String {
@@ -29,11 +38,15 @@ pub fn describe_summary(summary: &ReviewSummary) -> String {
     } else {
         pluralize(summary.accepted, "finding", "findings")
     };
-    format!(
+    let headline = format!(
         "{}: {count} ({} dropped as invalid)",
         summary.mode.label(),
         summary.dropped
-    )
+    );
+    if summary.dropped_details.is_empty() {
+        return headline;
+    }
+    format!("{headline}\n{}", summary.dropped_details.join("\n"))
 }
 
 pub fn finish_success(

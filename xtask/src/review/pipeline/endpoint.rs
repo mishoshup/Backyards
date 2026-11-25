@@ -7,8 +7,9 @@ const DEFAULT_MODEL: &str = "deepseek-flash";
 
 pub fn endpoint_for(mode: ReviewerMode) -> Result<ModelEndpoint, ReviewError> {
     let api_key =
-        std::env::var("DEEPSEEK_API_KEY").map_err(|_missing| ReviewError::MissingEnvironment {
+        std::env::var("DEEPSEEK_API_KEY").map_err(|source| ReviewError::MissingEnvironment {
             name: "DEEPSEEK_API_KEY",
+            source,
         })?;
     let base_url =
         std::env::var("DEEPSEEK_BASE_URL").unwrap_or_else(|_| DEFAULT_BASE_URL.to_owned());

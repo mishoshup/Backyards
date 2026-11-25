@@ -32,8 +32,11 @@ pub enum ReviewError {
     InvalidAnswer { reason: String },
     #[error("malformed model stream event: {reason}")]
     MalformedStreamEvent { reason: String },
-    #[error("environment variable {name} is not set")]
-    MissingEnvironment { name: &'static str },
+    #[error("environment variable {name} is unusable: {source}")]
+    MissingEnvironment {
+        name: &'static str,
+        source: std::env::VarError,
+    },
 }
 
 impl ReviewError {

@@ -94,6 +94,15 @@ fn truncated_answer_is_a_failure() {
 }
 
 #[test]
+fn stream_closed_without_finish_reason_is_a_failure() {
+    let server =
+        FakeModelServer::start(vec![Script::Respond(content_event("{\"violations\":[]}"))]);
+    let error = ask(&client_for(&server)).unwrap_err();
+    assert!(matches!(error, ReviewError::ModelTruncated { .. }));
+    server.finish();
+}
+
+#[test]
 fn empty_and_invalid_answers_are_failures() {
     assert!(matches!(parse_answer("  "), Err(ReviewError::EmptyAnswer)));
     assert!(matches!(

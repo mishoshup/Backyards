@@ -135,6 +135,7 @@ struct StreamState {
     reasoning_chunks: usize,
     tool_calls: Vec<ToolCall>,
     finish_reason: Option<FinishReason>,
+    is_complete: bool,
     started: Instant,
     last_report: Instant,
 }
@@ -148,6 +149,7 @@ impl StreamState {
             reasoning_chunks: 0,
             tool_calls: Vec::new(),
             finish_reason: None,
+            is_complete: false,
             started: now,
             last_report: now,
         }
@@ -158,8 +160,14 @@ impl StreamState {
             StreamEvent::Content(text) => self.content.push_str(&text),
             StreamEvent::Reasoning(text) => self.record_reasoning(&text),
             StreamEvent::ToolCalls(fragments) => self.merge_tool_calls(fragments)?,
-            StreamEvent::Finished(reason) => self.finish_reason = Some(reason),
-            StreamEvent::Done => return Ok(true),
+            StreamEvent::Finished(reason) => {
+                self.finish_reason = Some(reason);
+                self.is_complete = true;
+            }
+            StreamEvent::Done => {
+                self.is_complete = true;
+                return Ok(true);
+            }
             StreamEvent::Ignored => {}
         }
         Ok(false)
@@ -212,6 +220,11 @@ impl StreamState {
     }
 
     fn into_reply(mut self) -> Result<ModelReply, ReviewError> {
+        if !self.is_complete {
+            return Err(ReviewError::ModelTruncated {
+                finish_reason: "stream ended without a finish reason".to_owned(),
+            });
+        }
         if let Some(FinishReason::Other(other)) = self.finish_reason {
             return Err(ReviewError::ModelTruncated {
                 finish_reason: other,
