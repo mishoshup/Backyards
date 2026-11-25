@@ -27,8 +27,17 @@ fn read_file_numbers_the_requested_range() {
 #[test]
 fn read_file_rejects_parent_traversal() {
     let fixture = fixture_with_sources();
-    let output = run(&fixture, "read_file", r#"{"path":"../outside.txt"}"#);
-    assert!(output.starts_with("error:"), "{output}");
+    let outside = fixture
+        .path()
+        .with_file_name("backyards-outside-fixture.txt");
+    std::fs::write(&outside, "secret").unwrap();
+    let output = run(
+        &fixture,
+        "read_file",
+        r#"{"path":"../backyards-outside-fixture.txt"}"#,
+    );
+    std::fs::remove_file(&outside).unwrap();
+    assert!(output.contains("outside the repository"), "{output}");
 }
 
 #[test]

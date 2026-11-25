@@ -65,8 +65,10 @@ fn run_reviewed(
         options,
         head_sha,
     };
-    let comment = start_progress(run)?;
-    match with_deadline(run, &comment, || review_and_publish(repository, run)) {
+    let comment = create_progress(run)?;
+    match with_deadline(run, &comment, || {
+        mark_started_then_review(repository, run, &comment)
+    }) {
         Ok(summaries) => finish_success(run, &comment, &summaries),
         Err(error) => {
             finish_failure(run, &comment, &error.to_string())?;
@@ -75,14 +77,24 @@ fn run_reviewed(
     }
 }
 
-fn start_progress(run: ReviewRun<'_>) -> Result<ProgressComment, GateError> {
-    let comment = run
-        .github
-        .create_progress_comment(run.options.pull_request, run.head_sha)?;
+fn create_progress(run: ReviewRun<'_>) -> Result<ProgressComment, GateError> {
+    run.github
+        .create_progress_comment(run.options.pull_request, run.head_sha)
+}
+
+fn mark_started_then_review(
+    repository: &Repository,
+    run: ReviewRun<'_>,
+    comment: &ProgressComment,
+) -> Result<Vec<ReviewSummary>, GateError> {
+    mark_started(run, comment)?;
+    review_and_publish(repository, run)
+}
+
+fn mark_started(run: ReviewRun<'_>, comment: &ProgressComment) -> Result<(), GateError> {
     run.github
         .add_comment_reaction(&comment.identifier, "eyes")?;
-    record_status(run, StatusState::Pending, "Review in progress")?;
-    Ok(comment)
+    record_status(run, StatusState::Pending, "Review in progress")
 }
 
 fn review_and_publish(

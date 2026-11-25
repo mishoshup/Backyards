@@ -13,29 +13,29 @@ pub fn with_deadline<Outcome>(
     comment: &ProgressComment,
     work: impl FnOnce() -> Outcome,
 ) -> Outcome {
-    let settled = AtomicBool::new(false);
+    let is_settled = AtomicBool::new(false);
     std::thread::scope(|scope| {
-        let watchdog = scope.spawn(|| fail_when_overdue(run, comment, &settled));
+        let watchdog = scope.spawn(|| fail_when_overdue(run, comment, &is_settled));
         let outcome = work();
-        wait_if_watchdog_won(&settled);
+        wait_if_watchdog_won(&is_settled);
         watchdog.thread().unpark();
         outcome
     })
 }
 
-fn wait_if_watchdog_won(settled: &AtomicBool) {
-    if settled.swap(true, Ordering::SeqCst) {
+fn wait_if_watchdog_won(is_settled: &AtomicBool) {
+    if is_settled.swap(true, Ordering::SeqCst) {
         loop {
             std::thread::park();
         }
     }
 }
 
-fn fail_when_overdue(run: ReviewRun<'_>, comment: &ProgressComment, settled: &AtomicBool) {
+fn fail_when_overdue(run: ReviewRun<'_>, comment: &ProgressComment, is_settled: &AtomicBool) {
     let deadline = Instant::now() + REVIEW_DEADLINE;
-    while !settled.load(Ordering::SeqCst) {
+    while !is_settled.load(Ordering::SeqCst) {
         let remaining = deadline.saturating_duration_since(Instant::now());
-        if remaining.is_zero() && !settled.swap(true, Ordering::SeqCst) {
+        if remaining.is_zero() && !is_settled.swap(true, Ordering::SeqCst) {
             abandon_review(run, comment);
         }
         std::thread::park_timeout(remaining);

@@ -31,7 +31,8 @@ pub fn parse_answer(text: &str) -> Result<ReviewAnswer, ReviewError> {
     if trimmed.is_empty() {
         return Err(ReviewError::EmptyAnswer);
     }
-    serde_json::from_str(trimmed).map_err(|source| ReviewError::InvalidAnswer {
+    let json = extract_json_object(trimmed).unwrap_or(trimmed);
+    serde_json::from_str(json).map_err(|source| ReviewError::InvalidAnswer {
         reason: source.to_string(),
     })
 }

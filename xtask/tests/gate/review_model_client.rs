@@ -133,3 +133,9 @@ fn oversized_tool_call_index_is_rejected_without_allocation() {
     assert!(matches!(error, ReviewError::MalformedStreamEvent { .. }));
     server.finish();
 }
+
+#[test]
+fn answer_wrapped_in_prose_is_extracted() {
+    let answer = parse_answer("Here is the review: {\"violations\":[]}").unwrap();
+    assert_eq!(answer.violations, vec![]);
+}
