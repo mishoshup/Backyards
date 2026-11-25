@@ -2,6 +2,7 @@
 set -euo pipefail
 
 maximum_diff_bytes=600000
+diff_file=""
 
 fetch_diff() {
   if [ -n "${PULL_REQUEST_NUMBER:-}" ]; then
@@ -32,18 +33,23 @@ fetch_capped_diff() {
 
 reject_oversized_diff() {
   local diff_byte_count
-  diff_byte_count=$(printf '%s' "$1" | wc -c)
+  diff_byte_count=$(wc -c < "$1")
   if [ "${diff_byte_count}" -gt "$maximum_diff_bytes" ]; then
     echo "review: diff exceeds ${maximum_diff_bytes} bytes; split the pull request" >&2
     exit 1
   fi
 }
 
+remove_diff_file() {
+  rm -f -- "${diff_file}"
+}
+
 main() {
-  local diff_text
-  diff_text=$(fetch_capped_diff "$@")
-  reject_oversized_diff "$diff_text"
-  printf '%s\n' "$diff_text"
+  diff_file=$(mktemp)
+  trap remove_diff_file EXIT
+  fetch_capped_diff "$@" > "${diff_file}"
+  reject_oversized_diff "${diff_file}"
+  cat "${diff_file}"
 }
 
 main "$@"

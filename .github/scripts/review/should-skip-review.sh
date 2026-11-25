@@ -12,12 +12,12 @@ validate_arguments() {
 }
 
 read_head_sha() {
-  gh api "repos/${GITHUB_REPOSITORY}/pulls/${pull_request_number}" --jq .head.sha
+  git rev-parse HEAD
 }
 
 read_existing_state() {
   gh api --paginate "repos/${GITHUB_REPOSITORY}/commits/$1/status" \
-    --jq ".statuses[] | select(.context == \"$2\") | .state"
+    --jq "[.statuses[] | select(.context == \"$2\") | .state] | first // empty"
 }
 
 decide_skip() {
