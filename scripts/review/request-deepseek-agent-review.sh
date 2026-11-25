@@ -8,7 +8,7 @@ source scripts/review/review-tools.sh
 readonly base_url="${DEEPSEEK_BASE_URL:-https://api.deepseek.com}"
 readonly request_timeout_seconds=600
 readonly maximum_rounds=14
-readonly model="${REVIEW_MODEL_HOLISTIC:-deepseek-v4-pro}"
+readonly model="${REVIEW_MODEL_HOLISTIC:-deepseek-flash}"
 readonly tool_definitions="scripts/review/tool-definitions.json"
 
 build_request_body() {

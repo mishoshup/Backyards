@@ -8,7 +8,7 @@ readonly heartbeat_interval_seconds=15
 select_model() {
   case "$1" in
     inline) echo "${REVIEW_MODEL_INLINE:-deepseek-flash}" ;;
-    holistic) echo "${REVIEW_MODEL_HOLISTIC:-deepseek-v4-pro}" ;;
+    holistic) echo "${REVIEW_MODEL_HOLISTIC:-deepseek-flash}" ;;
   esac
 }
 
