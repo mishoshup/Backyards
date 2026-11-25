@@ -10,12 +10,12 @@ readonly head_sha="${3:?head SHA required}"
 
 read_result_line() {
   local result_file
-  result_file=$(review_result_path "$1")
+  result_file=$(resolve_review_result_path "$1")
   if [[ -f "${result_file}" ]]; then cat "${result_file}"; else echo "$1: did not run"; fi
 }
 
 count_findings() {
-  cat "$(review_result_path inline)" "$(review_result_path holistic)" 2>/dev/null | awk '{ total += $2 } END { print total + 0 }'
+  cat "$(resolve_review_result_path inline)" "$(resolve_review_result_path holistic)" 2>/dev/null | awk '{ total += $2 } END { print total + 0 }'
 }
 
 build_body() {
@@ -28,7 +28,7 @@ update_comment() {
 
 react_to_outcome() {
   .github/scripts/review/remove-comment-reaction.sh "${comment_id}" "eyes" "github-actions[bot]" || echo "warning: could not remove the in-progress reaction" >&2
-  if [[ "${job_status}" == "success" && -f "$(review_result_path inline)" && -f "$(review_result_path holistic)" && "$(count_findings)" -eq 0 ]]; then
+  if [[ "${job_status}" == "success" && -f "$(resolve_review_result_path inline)" && -f "$(resolve_review_result_path holistic)" && "$(count_findings)" -eq 0 ]]; then
     .github/scripts/review/add-comment-reaction.sh "${comment_id}" "+1" || echo "warning: could not add the approval reaction" >&2
   fi
 }

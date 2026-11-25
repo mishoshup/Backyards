@@ -13,6 +13,9 @@ remove_scratch_directory() {
 }
 trap remove_scratch_directory EXIT
 
+# shellcheck source=/dev/null
+source scripts/review/review-tools.sh
+
 fail_test() {
   echo "review script test failed: $1" >&2
   failures=$((failures + 1))
@@ -66,8 +69,6 @@ test_known_rule_is_accepted() {
 
 test_glob_conversion_is_anchored_and_segment_aware() {
   local converted
-  # shellcheck source=/dev/null
-  source scripts/review/review-tools.sh
   converted=$(convert_glob_to_pattern 'crates/*/Cargo.toml')
   grep -qE "${converted}" <<<"crates/a/Cargo.toml" || fail_test "glob did not match a direct child"
   if grep -qE "${converted}" <<<"crates/a/b/Cargo.toml"; then fail_test "single star crossed a directory"; fi
@@ -96,6 +97,42 @@ test_overflow_findings_are_listed_in_summary() {
   expect_equal "result line" "$(cat "${scratch_directory}/review-result-holistic")" "holistic: 32 findings (first 30 posted)"
 }
 
+test_reviewable_paths_include_policy_files() {
+  local path
+  for path in crates/a/src/lib.rs clippy.toml deny.toml rust-toolchain.toml AGENTS.md scripts/check.sh .github/workflows/ci.yml; do
+    printf '%s\n' "${path}" > "${scratch_directory}/changed.txt"
+    .github/scripts/review/select-reviewable-paths.sh "${scratch_directory}/changed.txt" || fail_test "${path} was not selected for review"
+  done
+}
+
+test_unrelated_paths_are_not_reviewable() {
+  printf '%s\n' README.md docs/notes.txt > "${scratch_directory}/changed.txt"
+  if .github/scripts/review/select-reviewable-paths.sh "${scratch_directory}/changed.txt"; then fail_test "unrelated paths were selected"; fi
+}
+
+test_status_state_is_validated() {
+  local message
+  message=$(GITHUB_REPOSITORY=o/r PATH="${scratch_directory}/bin:${PATH}" \
+    .github/scripts/review/record-review-complete.sh "$(printf 'a%.0s' {1..40})" ai-review-completed/deepseek/pr-1 desc bogus 2>&1 || true)
+  grep -q "state must be" <<<"${message}" || fail_test "invalid status state was accepted"
+}
+
+test_tool_output_is_truncated_with_a_marker() {
+  local output
+  head -c 300000 /dev/zero | tr '\0' 'x' > "${scratch_directory}/large.txt"
+  output=$(limit_output < "${scratch_directory}/large.txt")
+  grep -q "truncated" <<<"${output}" || fail_test "oversized tool output had no truncation marker"
+}
+
+test_search_with_many_matches_is_not_a_tool_error() {
+  local output
+  mkdir -p "${scratch_directory}/many"
+  seq 1 500 | sed 's/^/match /' > "${scratch_directory}/many/file.txt"
+  output=$(cd "${scratch_directory}/many" && set -o pipefail && search_repository '{"pattern":"match"}'; echo "status:$?")
+  grep -q 'status:0' <<<"${output}" || fail_test "truncated search returned a non-zero status"
+}
+
+
 main() {
   write_fake_gh
   test_allowed_rules_are_extracted
@@ -106,6 +143,11 @@ main() {
   test_missing_answer_is_recorded
   test_failed_inline_posts_fall_back_to_summary
   test_overflow_findings_are_listed_in_summary
+  test_reviewable_paths_include_policy_files
+  test_unrelated_paths_are_not_reviewable
+  test_status_state_is_validated
+  test_tool_output_is_truncated_with_a_marker
+  test_search_with_many_matches_is_not_a_tool_error
   [ "${failures}" -eq 0 ]
 }
 

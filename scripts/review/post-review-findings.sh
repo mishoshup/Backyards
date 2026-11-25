@@ -18,7 +18,7 @@ describe_count() {
 }
 
 record_result() {
-  echo "$1: $2" > "$(review_result_path "$1")"
+  echo "$1: $2" > "$(resolve_review_result_path "$1")"
 }
 
 describe_truncation() {
@@ -49,8 +49,10 @@ post_each_violation() {
 
 post_summary_comment() {
   local body
-  body=$(jq -r --arg mode "${review_mode}" --argjson cap "${MAXIMUM_SUMMARY_FINDINGS}" \
-    '"Automated " + $mode + " review: some findings could not be placed inline.\n\n" + ([.violations[:$cap][] | "- `" + .path + ":" + (.line | tostring) + "` " + .body] | join("\n")) + (if (.violations | length) > $cap then "\n\n" + ((.violations | length) - $cap | tostring) + (if (.violations | length) - $cap == 1 then " further finding omitted." else " further findings omitted." end) else "" end)' <<<"$1")
+  local omitted_count
+  omitted_count=$(jq --argjson cap "${MAXIMUM_SUMMARY_FINDINGS}" '[(.violations | length) - $cap, 0] | max' <<<"$1")
+  body=$(jq -r --arg mode "${review_mode}" --argjson cap "${MAXIMUM_SUMMARY_FINDINGS}" --arg omittedNoun "$(select_finding_noun "${omitted_count}")" \
+    '"Automated " + $mode + " review: some findings could not be placed inline.\n\n" + ([.violations[:$cap][] | "- `" + .path + ":" + (.line | tostring) + "` " + .body] | join("\n")) + (if (.violations | length) > $cap then "\n\n" + ((.violations | length) - $cap | tostring) + " further " + $omittedNoun + " omitted." else "" end)' <<<"$1")
   gh pr comment "${PULL_REQUEST_NUMBER}" --repo "${REPOSITORY}" --body "${body}"
 }
 
