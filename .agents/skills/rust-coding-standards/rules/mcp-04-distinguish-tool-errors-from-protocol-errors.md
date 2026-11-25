@@ -1,5 +1,5 @@
 ---
-id: MCP-04
+ruleId: MCP-04
 enforcedBy: unit tests of both paths
 source: rmcp documentation (ErrorData vs CallToolResult::error); MCP specification (tool errors)
 ---

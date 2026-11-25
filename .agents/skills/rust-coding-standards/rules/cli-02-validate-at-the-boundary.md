@@ -1,5 +1,5 @@
 ---
-id: CLI-02
+ruleId: CLI-02
 enforcedBy: review; unit tests of rejected input
 source: clap documentation (value_parser, ValueEnum)
 ---

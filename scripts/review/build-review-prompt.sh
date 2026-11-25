@@ -27,8 +27,9 @@ print_output_contract() {
   cat <<'CONTRACT'
 
 Respond with JSON only, in this shape:
-{"findings":[{"path":"<file path>","line":<line number in the new file>,"body":"<defect and smallest correction>"}]}
-Use {"findings":[]} when there is no finding. Report only lines present in the diff.
+{"violations":[{"ruleId":"<rule identifier, or the area name for a holistic finding>","path":"<file path>","line":<line number in the new file>,"body":"<rule identifier, defect and smallest correction>"}]}
+The body of an inline violation must contain its rule identifier.
+Use {"violations":[]} when there is no finding. Report only lines present in the diff.
 CONTRACT
 }
 

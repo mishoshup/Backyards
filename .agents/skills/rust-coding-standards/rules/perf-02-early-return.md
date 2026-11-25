@@ -1,5 +1,5 @@
 ---
-id: PERF-02
+ruleId: PERF-02
 enforcedBy: review; clippy::needless_continue
 source: Project convention (general practice, enforced by review)
 ---

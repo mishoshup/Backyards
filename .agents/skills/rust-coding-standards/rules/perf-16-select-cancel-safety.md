@@ -1,5 +1,5 @@
 ---
-id: PERF-16
+ruleId: PERF-16
 enforcedBy: review
 source: Tokio documentation (tokio::select! cancellation safety)
 ---

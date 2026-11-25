@@ -1,5 +1,5 @@
 ---
-id: SERDE-03
+ruleId: SERDE-03
 enforcedBy: generated schema file is checked in and compared in CI
 source: schemars documentation (JsonSchema derive)
 ---

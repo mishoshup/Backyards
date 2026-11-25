@@ -1,5 +1,5 @@
 ---
-id: CONSISTENCY-16
+ruleId: CONSISTENCY-16
 enforcedBy: scripts/check-policy.sh (banned phrases); review
 source: Project convention (general practice, enforced by review)
 ---

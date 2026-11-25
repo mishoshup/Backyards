@@ -1,5 +1,5 @@
 ---
-id: CONSISTENCY-18
+ruleId: CONSISTENCY-18
 enforcedBy: review
 source: Project convention (general practice, enforced by review)
 ---

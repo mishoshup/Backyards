@@ -1,5 +1,5 @@
 ---
-id: PERF-10
+ruleId: PERF-10
 enforcedBy: review; clippy::needless_collect
 source: Project convention (general practice, enforced by review); The Rust Performance Book
 ---

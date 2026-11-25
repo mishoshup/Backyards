@@ -1,5 +1,5 @@
 ---
-id: CLI-03
+ruleId: CLI-03
 enforcedBy: unit test with `CommandFactory::command().debug_assert()`
 source: clap documentation (Command::debug_assert, testing)
 ---

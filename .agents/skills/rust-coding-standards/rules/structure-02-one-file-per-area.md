@@ -1,5 +1,5 @@
 ---
-id: STRUCTURE-02
+ruleId: STRUCTURE-02
 enforcedBy: review
 source: workspace AGENTS.md file layout and routing
 ---

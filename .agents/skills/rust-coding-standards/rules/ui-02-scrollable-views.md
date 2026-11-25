@@ -1,5 +1,5 @@
 ---
-id: UI-02
+ruleId: UI-02
 enforcedBy: review; TUI and desktop snapshot tests at narrow sizes
 source: Project convention (general practice, enforced by review)
 ---

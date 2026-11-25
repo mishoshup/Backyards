@@ -1,5 +1,5 @@
 ---
-id: PERF-08
+ruleId: PERF-08
 enforcedBy: review; clippy::disallowed_methods (unbounded channels)
 source: Tokio documentation (mpsc bounded channels, backpressure)
 ---

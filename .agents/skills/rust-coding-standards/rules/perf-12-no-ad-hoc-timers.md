@@ -1,5 +1,5 @@
 ---
-id: PERF-12
+ruleId: PERF-12
 enforcedBy: clippy::disallowed_methods (std::thread::sleep, tokio::time::sleep)
 source: Project convention (general practice, enforced by review)
 ---

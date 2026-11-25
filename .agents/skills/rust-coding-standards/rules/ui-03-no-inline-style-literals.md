@@ -1,5 +1,5 @@
 ---
-id: UI-03
+ruleId: UI-03
 enforcedBy: scripts/check-architecture.sh (no color or pixel literals outside `theme`)
 source: Project convention (general practice, enforced by review)
 ---

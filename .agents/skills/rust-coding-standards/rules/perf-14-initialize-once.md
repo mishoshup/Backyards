@@ -1,5 +1,5 @@
 ---
-id: PERF-14
+ruleId: PERF-14
 enforcedBy: clippy::disallowed_types (lazy statics); review
 source: std::sync::OnceLock and LazyLock documentation; rustc lint static_mut_refs
 ---

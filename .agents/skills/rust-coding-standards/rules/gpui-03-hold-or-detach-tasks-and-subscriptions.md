@@ -1,5 +1,5 @@
 ---
-id: GPUI-03
+ruleId: GPUI-03
 enforcedBy: must_use on `Task`; review
 source: GPUI documentation (Task is cancelled on drop; Subscription; detach)
 ---

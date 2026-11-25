@@ -1,5 +1,5 @@
 ---
-id: PERF-07
+ruleId: PERF-07
 enforcedBy: clippy::await_holding_lock, await_holding_refcell_ref
 source: Clippy lint list (rust-lang.github.io/rust-clippy): await_holding_lock; Tokio documentation (shared state)
 ---

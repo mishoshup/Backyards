@@ -1,5 +1,5 @@
 ---
-id: UI-05
+ruleId: UI-05
 enforcedBy: review
 source: Project convention (general practice, enforced by review)
 ---

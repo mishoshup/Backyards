@@ -1,5 +1,5 @@
 ---
-id: CONSISTENCY-20
+ruleId: CONSISTENCY-20
 enforcedBy: review
 source: Rust API Guidelines (rust-lang.github.io/api-guidelines) C-CASE, C-CONV, C-GETTER
 ---

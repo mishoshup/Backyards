@@ -1,5 +1,5 @@
 ---
-id: CONSISTENCY-15
+ruleId: CONSISTENCY-15
 enforcedBy: scripts/check-policy.sh (no em dashes); review
 source: Project convention (general practice, enforced by review)
 ---

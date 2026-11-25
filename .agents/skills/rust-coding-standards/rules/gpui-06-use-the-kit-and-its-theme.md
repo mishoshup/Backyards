@@ -1,5 +1,5 @@
 ---
-id: GPUI-06
+ruleId: GPUI-06
 enforcedBy: scripts/check-architecture.sh (only `gpui-kit` is listed, no direct `gpui` or `gpui-shell`); review
 source: gpui-kit README (umbrella crate pins GPUI)
 ---

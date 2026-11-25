@@ -1,5 +1,5 @@
 ---
-id: PERF-09
+ruleId: PERF-09
 enforcedBy: review; real-garden tests assert nothing is left behind
 source: Rust API Guidelines C-DTOR-FAIL and RAII guards in std (MutexGuard, tempfile)
 ---

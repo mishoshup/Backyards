@@ -1,5 +1,5 @@
 ---
-id: GPUI-02
+ruleId: GPUI-02
 enforcedBy: review
 source: GPUI documentation (Context::notify)
 ---

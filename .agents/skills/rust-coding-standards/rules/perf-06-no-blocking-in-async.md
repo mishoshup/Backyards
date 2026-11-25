@@ -1,5 +1,5 @@
 ---
-id: PERF-06
+ruleId: PERF-06
 enforcedBy: clippy::disallowed_methods (std::thread::sleep, std::fs in async); review
 source: Tokio documentation (bridging with sync code, spawn_blocking)
 ---

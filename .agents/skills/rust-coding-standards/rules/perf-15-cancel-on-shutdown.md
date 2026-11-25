@@ -1,5 +1,5 @@
 ---
-id: PERF-15
+ruleId: PERF-15
 enforcedBy: review; shutdown integration test
 source: Tokio documentation (graceful shutdown: CancellationToken, JoinSet)
 ---

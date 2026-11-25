@@ -1,5 +1,5 @@
 ---
-id: CONSISTENCY-17
+ruleId: CONSISTENCY-17
 enforcedBy: review; message tests
 source: Project convention (general practice, enforced by review)
 ---

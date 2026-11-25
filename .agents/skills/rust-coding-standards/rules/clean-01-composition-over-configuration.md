@@ -1,5 +1,5 @@
 ---
-id: CLEAN-01
+ruleId: CLEAN-01
 enforcedBy: review; clippy::fn_params_excessive_bools, struct_excessive_bools
 source: Clippy lint list (rust-lang.github.io/rust-clippy): fn_params_excessive_bools, struct_excessive_bools; Project convention (general practice, enforced by review)
 ---

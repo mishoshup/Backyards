@@ -1,5 +1,5 @@
 ---
-id: NAMING-03
+ruleId: NAMING-03
 enforcedBy: review
 source: Project convention (general practice, enforced by review); Rust API Guidelines (rust-lang.github.io/api-guidelines) C-CASE
 ---

@@ -1,9 +1,27 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-head_sha="$1"
-status_context="$2"
-description="$3"
+readonly head_sha="${1:?head SHA required}"
+readonly status_context="${2:?status context required}"
+readonly description="${3:-Reviewed at this commit}"
+readonly maximum_description_length=140
 
-gh api "repos/${GITHUB_REPOSITORY}/statuses/${head_sha}" \
-  -f state=success -f context="${status_context}" -f description="${description}" > /dev/null
+validate_arguments() {
+  [[ "${head_sha}" =~ ^[0-9a-f]{40}$ ]] || { echo "head SHA must be 40 hexadecimal characters" >&2; exit 1; }
+  [[ "${status_context}" =~ ^[a-z0-9]([a-z0-9/_-]*[a-z0-9])?$ ]] || { echo "invalid status context" >&2; exit 1; }
+}
+
+post_status() {
+  gh api -X POST "repos/${GITHUB_REPOSITORY}/statuses/${head_sha}" \
+    -f state=success \
+    -f context="${status_context}" \
+    -f description="${description:0:${maximum_description_length}}" \
+    -f target_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" > /dev/null
+}
+
+main() {
+  validate_arguments
+  post_status
+}
+
+main

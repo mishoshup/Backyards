@@ -36,7 +36,7 @@ extract_findings_json() {
     echo "review: the model returned no content" >&2
     exit 1
   fi
-  printf '%s\n' "$content" | jq -e '.findings | arrays' > /dev/null
+  printf '%s\n' "$content" | jq -e '.violations | arrays' > /dev/null
   printf '%s\n' "$content"
 }
 

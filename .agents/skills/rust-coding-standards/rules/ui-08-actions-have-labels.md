@@ -1,5 +1,5 @@
 ---
-id: UI-08
+ruleId: UI-08
 enforcedBy: review
 source: Project convention (general practice, enforced by review)
 ---

@@ -1,5 +1,5 @@
 ---
-id: GPUI-04
+ruleId: GPUI-04
 enforcedBy: clippy::disallowed_methods; review
 source: GPUI documentation (background_spawn, async executor)
 ---

@@ -1,5 +1,5 @@
 ---
-id: CONSISTENCY-02
+ruleId: CONSISTENCY-02
 enforcedBy: clippy::unreadable_literal; review
 source: Project convention (general practice, enforced by review)
 ---

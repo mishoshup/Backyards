@@ -1,5 +1,5 @@
 ---
-id: NAMING-02
+ruleId: NAMING-02
 enforcedBy: review
 source: Project convention (general practice, enforced by review)
 ---
