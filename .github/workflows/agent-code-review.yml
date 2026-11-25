@@ -13,7 +13,7 @@ jobs:
     permissions: {}
     if: >-
       (github.event_name == 'pull_request' && github.event.pull_request.draft != true && github.event.pull_request.head.repo.full_name == github.repository && !contains(github.event.pull_request.title, 'Revert')) ||
-      (github.event_name == 'issue_comment' && github.event.issue.pull_request && contains(github.event.comment.body, '@agent review'))
+      (github.event_name == 'issue_comment' && github.event.issue.pull_request && contains(github.event.comment.body, '/agent-review'))
     runs-on: ubuntu-latest
     outputs:
       is_authorized: ${{ steps.gate.outputs.is_authorized }}
@@ -92,7 +92,7 @@ jobs:
 
       - name: Record review completion
         if: steps.skip.outputs.skip != 'true' && steps.filter.outputs.code == 'true' && steps.inline-review.outcome == 'success' && steps.holistic-review.outcome == 'success'
-        run: .github/scripts/review/record-review-complete.sh "${{ steps.skip.outputs.head_sha }}" "${{ steps.skip.outputs.context }}" "Reviewed at this commit - comment @agent review to re-run"
+        run: .github/scripts/review/record-review-complete.sh "${{ steps.skip.outputs.head_sha }}" "${{ steps.skip.outputs.context }}" "Reviewed at this commit - comment /agent-review to re-run"
 
       - name: Record that no reviewable files changed
         if: steps.skip.outputs.skip != 'true' && steps.filter.outputs.code != 'true'
