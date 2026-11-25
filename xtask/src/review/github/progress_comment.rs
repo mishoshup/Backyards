@@ -75,7 +75,7 @@ impl GitHub {
 
     fn label_comment_page(&self, pull_request: u64, page: usize) -> Result<Vec<String>, GateError> {
         let filter = format!(
-            ".[] | if (.user.login == \"{BOT_LOGIN}\" and (.body | contains(\"{PROGRESS_MARKER}\"))) then \"{PROGRESS_LABEL}\" else \"{OTHER_LABEL}\" end"
+            ".[] | if (.user.login == \"{BOT_LOGIN}\" and (.body | startswith(\"{PROGRESS_MARKER}\"))) then \"{PROGRESS_LABEL}\" else \"{OTHER_LABEL}\" end"
         );
         let route =
             format!("issues/{pull_request}/comments?per_page={COMMENTS_PER_PAGE}&page={page}");

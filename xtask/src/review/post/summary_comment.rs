@@ -8,18 +8,29 @@ use crate::review::post::inline_comment::PostTarget;
 const MAXIMUM_LISTED_PLACEMENT_FAILURES: usize = 5;
 
 pub const MAXIMUM_SUMMARY_FINDINGS: usize = 100;
+const MAXIMUM_SUMMARY_BYTES: usize = 60_000;
 
 #[must_use]
 pub fn build_summary_body(mode: ReviewerMode, violations: &[Violation]) -> String {
-    let listed = violations.iter().take(MAXIMUM_SUMMARY_FINDINGS);
-    let lines: Vec<String> = listed.map(describe_summary_line).collect();
-    let omitted = violations.len().saturating_sub(MAXIMUM_SUMMARY_FINDINGS);
+    let candidates = violations.iter().take(MAXIMUM_SUMMARY_FINDINGS);
+    let lines = keep_lines_within_budget(candidates.map(describe_summary_line));
+    let omitted = violations.len().saturating_sub(lines.len());
     format!(
         "Automated {} review: some findings could not be placed inline.\n\n{}{}",
         mode.label(),
         lines.join("\n"),
         describe_omitted(omitted)
     )
+}
+
+fn keep_lines_within_budget(lines: impl Iterator<Item = String>) -> Vec<String> {
+    let mut used_bytes = 0;
+    lines
+        .take_while(|line| {
+            used_bytes += line.len() + 1;
+            used_bytes <= MAXIMUM_SUMMARY_BYTES
+        })
+        .collect()
 }
 
 fn describe_summary_line(violation: &Violation) -> String {

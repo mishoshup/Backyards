@@ -36,6 +36,8 @@ pub enum ReviewError {
     MalformedStreamEvent { reason: String },
     #[error("{details}")]
     ReviewersFailed { details: String },
+    #[error("{cause}; recording the failure also failed: {recording}")]
+    FailureNotRecorded { cause: String, recording: String },
     #[error("environment variable {name} is {reason}")]
     MissingEnvironment {
         name: &'static str,
@@ -72,6 +74,7 @@ impl ReviewError {
             | Self::ProgressWrite { .. }
             | Self::UnknownStatusState { .. }
             | Self::ReviewersFailed { .. }
+            | Self::FailureNotRecorded { .. }
             | Self::MissingEnvironment { .. } => false,
         }
     }

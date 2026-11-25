@@ -8,6 +8,16 @@ pub enum GateError {
         path: PathBuf,
         source: std::io::Error,
     },
+    #[error("cannot write {path}: {source}")]
+    WriteFile {
+        path: PathBuf,
+        source: std::io::Error,
+    },
+    #[error("cannot remove {path}: {source}")]
+    RemoveFile {
+        path: PathBuf,
+        source: std::io::Error,
+    },
     #[error("cannot list {path}: {source}")]
     ReadDirectory {
         path: PathBuf,

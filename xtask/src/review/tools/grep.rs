@@ -23,6 +23,7 @@ pub struct GrepArguments {
 struct SearchResult {
     matches: Vec<String>,
     skipped: Vec<String>,
+    is_search_stopped: bool,
 }
 
 pub fn grep(root: &Path, arguments: &GrepArguments) -> Result<String, ToolError> {
@@ -48,6 +49,7 @@ fn search_files(
             collect_confined_matches(canonical_root, &relative, pattern, &mut result);
         }
         if result.matches.len() > MAXIMUM_GREP_MATCHES {
+            result.is_search_stopped = true;
             break;
         }
     }
@@ -101,8 +103,22 @@ fn read_searchable_text(path: &Path) -> Result<String, ToolError> {
 
 fn render_result(result: &SearchResult) -> String {
     let matches = render_capped_lines(&result.matches, MAXIMUM_GREP_MATCHES);
-    if result.skipped.is_empty() {
+    let notes = render_notes(result);
+    if notes.is_empty() {
         return matches;
     }
-    format!("{matches}\n[skipped files]\n{}", result.skipped.join("\n"))
+    format!("{notes}\n{matches}")
+}
+
+fn render_notes(result: &SearchResult) -> String {
+    let mut notes = Vec::new();
+    if result.is_search_stopped {
+        notes.push(format!(
+            "[search stopped after {MAXIMUM_GREP_MATCHES} matches, later files were not searched]"
+        ));
+    }
+    if !result.skipped.is_empty() {
+        notes.push(format!("[skipped files]\n{}", result.skipped.join("\n")));
+    }
+    notes.join("\n")
 }

@@ -1,5 +1,5 @@
 use std::collections::BTreeSet;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use crate::report::{GateError, pluralize, write_report_line};
 use crate::review::diff::read_local_diff;
@@ -7,6 +7,7 @@ use crate::review::model::{extract_json_object, parse_answer};
 use crate::review::pipeline::{ReviewContext, load_review_context};
 use crate::review::post::{ValidationOutcome, validate_answer};
 use crate::review::prompt::build_review_prompts;
+use crate::review::prompt_file::PromptFile;
 use crate::review::worker::{ReviewerResult, run_each_reviewer_mode};
 use crate::review::{ReviewError, ReviewerMode};
 use crate::workspace::{Repository, capture_command};
@@ -39,47 +40,18 @@ fn run_one_reviewer(
     mode: ReviewerMode,
 ) -> Result<ValidationOutcome, GateError> {
     let prompts = build_review_prompts(repository, mode, &context.rules, &context.diff)?;
-    let prompt_path = write_prompt_file(mode, &format!("{}\n\n{}", prompts.system, prompts.user))?;
-    let output = run_opencode(repository, options, mode, &prompt_path);
-    remove_prompt_file(&prompt_path)?;
-    let answer = parse_opencode_answer(&output?)?;
+    let prompt_file = PromptFile::create(mode, &format!("{}\n\n{}", prompts.system, prompts.user))?;
+    let output = run_opencode(repository, options, mode, prompt_file.path());
+    let removal = prompt_file.remove();
+    let output = output?;
+    removal?;
+    let answer = parse_opencode_answer(&output)?;
     Ok(validate_answer(
         answer,
         mode,
         &context.added,
         &context.rules,
     ))
-}
-
-fn write_prompt_file(mode: ReviewerMode, prompt: &str) -> Result<PathBuf, GateError> {
-    let path = std::env::temp_dir().join(format!(
-        "backyards-review-{}-{}.prompt",
-        mode.label(),
-        std::process::id()
-    ));
-    write_private_file(&path, prompt).map_err(|source| GateError::ReadFile {
-        path: path.clone(),
-        source,
-    })?;
-    Ok(path)
-}
-
-fn write_private_file(path: &Path, content: &str) -> std::io::Result<()> {
-    use std::io::Write;
-    use std::os::unix::fs::OpenOptionsExt;
-    let mut file = std::fs::OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .mode(0o600)
-        .open(path)?;
-    file.write_all(content.as_bytes())
-}
-
-fn remove_prompt_file(path: &Path) -> Result<(), GateError> {
-    std::fs::remove_file(path).map_err(|source| GateError::ReadFile {
-        path: path.to_path_buf(),
-        source,
-    })
 }
 
 fn run_opencode(

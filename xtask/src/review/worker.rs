@@ -26,10 +26,21 @@ where
 fn join_worker(
     worker: ScopedJoinHandle<'_, Result<ValidationOutcome, GateError>>,
 ) -> Result<ValidationOutcome, GateError> {
-    worker.join().unwrap_or_else(|_panic| {
+    worker.join().unwrap_or_else(|payload| {
         Err(ReviewError::InvalidAnswer {
-            reason: "reviewer thread panicked".to_owned(),
+            reason: format!(
+                "reviewer thread panicked: {}",
+                describe_panic(payload.as_ref())
+            ),
         }
         .into())
     })
+}
+
+fn describe_panic(payload: &(dyn std::any::Any + Send)) -> String {
+    payload
+        .downcast_ref::<&str>()
+        .map(|text| (*text).to_owned())
+        .or_else(|| payload.downcast_ref::<String>().cloned())
+        .unwrap_or_else(|| "no message".to_owned())
 }

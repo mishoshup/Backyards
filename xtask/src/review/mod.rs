@@ -9,6 +9,7 @@ mod model;
 mod pipeline;
 mod post;
 mod prompt;
+mod prompt_file;
 mod tools;
 mod worker;
 

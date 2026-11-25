@@ -80,12 +80,14 @@ fn record_failure_keeping_cause(
     comment: &ProgressComment,
     cause: GateError,
 ) -> GateError {
-    if let Err(recording) = finish_failure(run, comment, &cause.to_string()) {
-        drop(write_report_line(&format!(
-            "could not record the review failure: {recording}"
-        )));
+    match finish_failure(run, comment, &cause.to_string()) {
+        Ok(()) => cause,
+        Err(recording) => ReviewError::FailureNotRecorded {
+            cause: cause.to_string(),
+            recording: recording.to_string(),
+        }
+        .into(),
     }
-    cause
 }
 
 fn create_progress(run: ReviewRun<'_>) -> Result<ProgressComment, GateError> {

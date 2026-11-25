@@ -91,7 +91,7 @@ fn api_arguments<'argument>(
 
 fn is_transient_failure(error: &GateError) -> bool {
     let GateError::CommandFailed { stderr, .. } = error else {
-        return true;
+        return false;
     };
     stderr.contains("HTTP 429") || stderr.contains("rate limit")
 }
