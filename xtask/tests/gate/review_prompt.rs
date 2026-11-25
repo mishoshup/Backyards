@@ -1,7 +1,7 @@
 use crate::fixture::Fixture;
 use xtask::review::{
-    ReviewerMode, allowed_rule_identifiers, build_rule_checklist, build_system_prompt,
-    build_user_prompt, load_reviewer_instructions, load_rule_files,
+    ReviewerMode, build_rule_checklist, build_system_prompt, build_user_prompt,
+    collect_allowed_rule_identifiers, load_reviewer_instructions, load_rule_files,
 };
 
 const RULES_DIRECTORY: &str = ".agents/skills/rust-coding-standards/rules";
@@ -55,7 +55,7 @@ fn checklist_lists_identifier_heading_and_file() {
 fn allowed_identifiers_match_the_loaded_rules() {
     let fixture = fixture_with_rules();
     let rules = load_rule_files(&fixture.repository()).unwrap();
-    let allowed = allowed_rule_identifiers(&rules);
+    let allowed = collect_allowed_rule_identifiers(&rules);
     assert!(allowed.contains("PERF-01"));
     assert!(!allowed.contains("PERF-99"));
 }

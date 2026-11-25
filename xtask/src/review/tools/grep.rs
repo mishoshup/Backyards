@@ -45,13 +45,25 @@ fn search_files(
     for relative in list_repository_paths(canonical_root)? {
         let path = canonical_root.join(&relative);
         if path.starts_with(scope_root) {
-            collect_file_matches(&relative, &path, pattern, &mut result);
+            collect_confined_matches(canonical_root, &relative, pattern, &mut result);
         }
         if result.matches.len() > MAXIMUM_GREP_MATCHES {
             break;
         }
     }
     Ok(result)
+}
+
+fn collect_confined_matches(
+    canonical_root: &Path,
+    relative: &str,
+    pattern: &Regex,
+    result: &mut SearchResult,
+) {
+    match resolve_inside_repository(canonical_root, relative) {
+        Ok(resolved) => collect_file_matches(relative, &resolved, pattern, result),
+        Err(error) => result.skipped.push(format!("{relative}: {error}")),
+    }
 }
 
 fn collect_file_matches(relative: &str, path: &Path, pattern: &Regex, result: &mut SearchResult) {

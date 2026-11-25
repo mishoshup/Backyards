@@ -6,8 +6,8 @@ use crate::review::diff::{AddedLines, parse_added_lines, read_local_diff};
 use crate::review::model::{Confidence, Violation, extract_json_object, parse_answer};
 use crate::review::post::{ValidationOutcome, validate_violations};
 use crate::review::prompt::{
-    allowed_rule_identifiers, build_system_prompt, build_user_prompt, load_reviewer_instructions,
-    load_rule_files,
+    build_system_prompt, build_user_prompt, collect_allowed_rule_identifiers,
+    load_reviewer_instructions, load_rule_files,
 };
 use crate::review::worker::join_worker;
 use crate::review::{ALL_REVIEWER_MODES, ReviewError, ReviewerMode};
@@ -75,7 +75,7 @@ fn run_one_reviewer(
     let output = run_opencode(repository, options, mode, &prompt_path);
     remove_prompt_file(&prompt_path)?;
     let answer = parse_opencode_answer(&output?)?;
-    let allowed = allowed_rule_identifiers(&context.rules);
+    let allowed = collect_allowed_rule_identifiers(&context.rules);
     Ok(validate_violations(
         answer.violations,
         mode,
@@ -120,7 +120,7 @@ fn run_opencode(
             &options.model,
             "-f",
             &attachment,
-            attachment_request(mode),
+            select_attachment_request(mode),
         ],
         &[0],
     )
@@ -190,7 +190,7 @@ fn describe_violation(violation: &Violation) -> String {
     )
 }
 
-const fn attachment_request(mode: ReviewerMode) -> &'static str {
+const fn select_attachment_request(mode: ReviewerMode) -> &'static str {
     match mode {
         ReviewerMode::Inline => INLINE_REQUEST,
         ReviewerMode::Holistic => HOLISTIC_REQUEST,

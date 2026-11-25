@@ -33,7 +33,7 @@ pub use post::{
     publish_findings, validate_violations,
 };
 pub use prompt::{
-    RuleFile, allowed_rule_identifiers, build_rule_checklist, build_system_prompt,
-    build_user_prompt, load_reviewer_instructions, load_rule_files,
+    RuleFile, build_rule_checklist, build_system_prompt, build_user_prompt,
+    collect_allowed_rule_identifiers, load_reviewer_instructions, load_rule_files,
 };
 pub use tools::{ToolError, ToolRunner, tool_definitions};

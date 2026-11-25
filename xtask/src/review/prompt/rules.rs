@@ -49,7 +49,7 @@ pub fn build_rule_checklist(rules: &[RuleFile]) -> String {
 }
 
 #[must_use]
-pub fn allowed_rule_identifiers(rules: &[RuleFile]) -> BTreeSet<&str> {
+pub fn collect_allowed_rule_identifiers(rules: &[RuleFile]) -> BTreeSet<&str> {
     rules.iter().map(|rule| rule.identifier.as_str()).collect()
 }
 

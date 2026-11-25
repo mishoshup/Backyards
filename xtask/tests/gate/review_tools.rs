@@ -47,6 +47,16 @@ fn read_file_rejects_a_symlink_leaving_the_repository() {
     assert!(output.contains("outside the repository"), "{output}");
 }
 
+#[cfg(unix)]
+#[test]
+fn grep_does_not_follow_a_symlink_leaving_the_repository() {
+    let fixture = fixture_with_sources();
+    std::os::unix::fs::symlink("/etc/hosts", fixture.path().join("link.txt")).unwrap();
+    let output = run(&fixture, "grep", r#"{"pattern":"localhost"}"#);
+    assert!(!output.contains("link.txt:1:"), "{output}");
+    assert!(output.contains("link.txt: "), "{output}");
+}
+
 #[test]
 fn list_files_matches_single_and_double_star_globs() {
     let fixture = fixture_with_sources();

@@ -8,7 +8,7 @@ use crate::review::model::{
 use crate::review::pipeline::endpoint::endpoint_for;
 use crate::review::post::{ValidationOutcome, validate_violations};
 use crate::review::prompt::{
-    RuleFile, allowed_rule_identifiers, build_system_prompt, build_user_prompt,
+    RuleFile, build_system_prompt, build_user_prompt, collect_allowed_rule_identifiers,
     load_reviewer_instructions, load_rule_files,
 };
 use crate::review::tools::ToolRunner;
@@ -58,7 +58,7 @@ fn run_one_reviewer(
     mode: ReviewerMode,
 ) -> Result<ValidationOutcome, GateError> {
     let answer = request_answer(context, mode)?;
-    let allowed: BTreeSet<&str> = allowed_rule_identifiers(&context.rules);
+    let allowed: BTreeSet<&str> = collect_allowed_rule_identifiers(&context.rules);
     Ok(validate_violations(
         answer.violations,
         mode,

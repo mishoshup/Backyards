@@ -60,7 +60,7 @@ impl HunkProgress {
         self.remaining_old == 0 && self.remaining_new == 0
     }
 
-    const fn after_addition(self) -> Self {
+    const fn advance_after_addition(self) -> Self {
         Self {
             remaining_new: self.remaining_new.saturating_sub(1),
             next_new_line: self.next_new_line + 1,
@@ -68,14 +68,14 @@ impl HunkProgress {
         }
     }
 
-    const fn after_removal(self) -> Self {
+    const fn advance_after_removal(self) -> Self {
         Self {
             remaining_old: self.remaining_old.saturating_sub(1),
             ..self
         }
     }
 
-    const fn after_context(self) -> Self {
+    const fn advance_after_context(self) -> Self {
         Self {
             remaining_old: self.remaining_old.saturating_sub(1),
             remaining_new: self.remaining_new.saturating_sub(1),
@@ -103,10 +103,10 @@ impl DiffParser {
         let updated = match line.chars().next() {
             Some('+') => {
                 self.record_added_line(progress.next_new_line);
-                progress.after_addition()
+                progress.advance_after_addition()
             }
-            Some('-') => progress.after_removal(),
-            Some(' ') | None => progress.after_context(),
+            Some('-') => progress.advance_after_removal(),
+            Some(' ') | None => progress.advance_after_context(),
             Some('\\') => progress,
             Some(_) => {
                 return Err(ReviewError::MalformedDiff {
