@@ -86,6 +86,10 @@ jobs:
         id: progress
         run: .github/scripts/review/start-review-comment.sh "${PULL_REQUEST_NUMBER}" "${{ steps.skip.outputs.head_sha }}"
 
+      - name: Mark the review pending
+        if: steps.skip.outputs.should_skip != 'true' && steps.filter.outputs.has_reviewable_files == 'true'
+        run: .github/scripts/review/record-review-complete.sh "${{ steps.skip.outputs.head_sha }}" "${{ steps.skip.outputs.context }}" "Review in progress" pending
+
       - name: Run the inline review
         id: inline-review
         if: steps.skip.outputs.should_skip != 'true' && steps.filter.outputs.has_reviewable_files == 'true'
@@ -109,6 +113,10 @@ jobs:
       - name: Record that no reviewable files changed
         if: steps.skip.outcome == 'success' && steps.filter.outcome == 'success' && steps.skip.outputs.should_skip != 'true' && steps.filter.outputs.has_reviewable_files != 'true'
         run: .github/scripts/review/record-review-complete.sh "${{ steps.skip.outputs.head_sha }}" "${{ steps.skip.outputs.context }}" "Skipped - no reviewable files changed"
+
+      - name: Record review failure
+        if: failure() && steps.skip.outputs.should_skip != 'true' && steps.filter.outputs.has_reviewable_files == 'true'
+        run: .github/scripts/review/record-review-complete.sh "${{ steps.skip.outputs.head_sha }}" "${{ steps.skip.outputs.context }}" "Review did not complete" failure
 
       - name: Publish the review result
         if: always() && steps.skip.outputs.should_skip != 'true'

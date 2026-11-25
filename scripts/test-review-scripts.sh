@@ -32,7 +32,7 @@ FAKE
   chmod +x "${scratch_directory}/bin/gh"
 }
 
-violations_json() {
+build_violations_json() {
   jq -n --argjson count "$1" '{violations: [range($count) | {path: "a.rs", line: 1, body: ("finding " + (. | tostring)), ruleId: "ERRORS-01"}]}'
 }
 
@@ -85,13 +85,13 @@ test_missing_answer_is_recorded() {
 
 test_failed_inline_posts_fall_back_to_summary() {
   : > "${scratch_directory}/summary.log"
-  FAKE_GH_API_STATUS=1 run_post_findings "$(violations_json 2)"
+  FAKE_GH_API_STATUS=1 run_post_findings "$(build_violations_json 2)"
   grep -q 'finding 1' "${scratch_directory}/summary.log" || fail_test "summary missing a finding"
 }
 
 test_overflow_findings_are_listed_in_summary() {
   : > "${scratch_directory}/summary.log"
-  run_post_findings "$(violations_json 32)"
+  run_post_findings "$(build_violations_json 32)"
   grep -q 'finding 31' "${scratch_directory}/summary.log" || fail_test "overflow finding not listed"
   expect_equal "result line" "$(cat "${scratch_directory}/review-result-holistic")" "holistic: 32 findings (first 30 posted)"
 }

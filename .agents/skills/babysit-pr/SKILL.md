@@ -5,7 +5,7 @@ description: Drive a Backyards pull request from local work to merge. Covers the
 
 # Babysit a pull request
 
-The loop runs until the pull request is clean, then merges it. Pushes to the pull request branch and the final squash merge are pre-approved. Pushes to `main` are never allowed.
+The loop runs until the pull request is clean, then merges it. Pushes to the pull request branch and the final squash merge are covered by the standing approval recorded in AGENTS.md section 10 item 5. Pushes to `main` are never allowed.
 
 ## Loop
 

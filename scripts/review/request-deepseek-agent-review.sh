@@ -10,6 +10,7 @@ source scripts/review/deepseek-client.sh
 readonly request_timeout_seconds=120
 readonly maximum_rounds=8
 readonly MAXIMUM_MODEL_ATTEMPTS=2
+readonly SIGPIPE_STATUS=141
 readonly MAXIMUM_LOGGED_ARGUMENT_LENGTH=120
 model="$(select_review_model holistic)"
 readonly model
@@ -63,7 +64,7 @@ run_tool_call() {
   echo "review: holistic tool ${name} ${arguments:0:MAXIMUM_LOGGED_ARGUMENT_LENGTH}" >&2
   local status=0
   output=$(run_tool "${name}" "${arguments}" 2>&1) || status=$?
-  [ "${status}" -eq 0 ] || output="error: tool exited with status ${status}: ${output}"
+  [ "${status}" -eq 0 ] || [ "${status}" -eq "${SIGPIPE_STATUS}" ] || output="error: tool exited with status ${status}: ${output}"
   jq -n --arg id "$(jq -r '.id' <<<"${call_json}")" --arg content "${output}" '{role: "tool", tool_call_id: $id, content: $content}'
 }
 

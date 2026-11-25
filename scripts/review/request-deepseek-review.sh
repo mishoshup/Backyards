@@ -36,7 +36,7 @@ tag_stream_events() {
 
 report_progress() {
   local mode="$1" started_at="$2" reasoning_events="$3"
-  echo "review: ${mode} thinking, $((SECONDS - started_at))s elapsed, ${reasoning_events} reasoning chunks" >&2
+  echo "review: ${mode} thinking, $((SECONDS - started_at))s elapsed, reasoning chunks: ${reasoning_events}" >&2
 }
 
 collect_stream() {

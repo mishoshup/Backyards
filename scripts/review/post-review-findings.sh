@@ -50,15 +50,15 @@ post_each_violation() {
 post_summary_comment() {
   local body
   body=$(jq -r --arg mode "${review_mode}" --argjson cap "${MAXIMUM_SUMMARY_FINDINGS}" \
-    '"Automated " + $mode + " review: some comments could not be placed inline.\n\n" + ([.violations[:$cap][] | "- `" + .path + ":" + (.line | tostring) + "` " + .body] | join("\n")) + (if (.violations | length) > $cap then "\n\n" + ((.violations | length) - $cap | tostring) + " further findings omitted." else "" end)' <<<"$1")
+    '"Automated " + $mode + " review: some findings could not be placed inline.\n\n" + ([.violations[:$cap][] | "- `" + .path + ":" + (.line | tostring) + "` " + .body] | join("\n")) + (if (.violations | length) > $cap then "\n\n" + ((.violations | length) - $cap | tostring) + (if (.violations | length) - $cap == 1 then " further finding omitted." else " further findings omitted." end) else "" end)' <<<"$1")
   gh pr comment "${PULL_REQUEST_NUMBER}" --repo "${REPOSITORY}" --body "${body}"
 }
 
-first_violations() {
+select_first_violations() {
   jq --argjson cap "${MAXIMUM_POSTED_FINDINGS}" '{violations: .violations[:$cap]}' <<<"$1"
 }
 
-remaining_violations() {
+select_remaining_violations() {
   jq --argjson cap "${MAXIMUM_POSTED_FINDINGS}" '{violations: .violations[$cap:]}' <<<"$1"
 }
 
@@ -71,8 +71,8 @@ summarize_unposted_violations() {
 }
 
 post_findings() {
-  post_each_violation "$(first_violations "$1")"
-  summarize_unposted_violations "$(remaining_violations "$1")"
+  post_each_violation "$(select_first_violations "$1")"
+  summarize_unposted_violations "$(select_remaining_violations "$1")"
 }
 
 main() {
