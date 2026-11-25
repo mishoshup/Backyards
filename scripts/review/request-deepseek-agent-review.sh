@@ -9,6 +9,7 @@ source scripts/review/deepseek-client.sh
 
 readonly request_timeout_seconds=120
 readonly maximum_rounds=8
+readonly MAXIMUM_LOGGED_ARGUMENT_LENGTH=120
 model="$(select_review_model holistic)"
 readonly model
 readonly tool_definitions="scripts/review/tool-definitions.json"
@@ -48,7 +49,7 @@ run_tool_call() {
   local call_json="$1" name arguments output
   name=$(jq -r '.function.name' <<<"${call_json}")
   arguments=$(jq -r '.function.arguments' <<<"${call_json}")
-  echo "review: holistic tool ${name} ${arguments:0:120}" >&2
+  echo "review: holistic tool ${name} ${arguments:0:MAXIMUM_LOGGED_ARGUMENT_LENGTH}" >&2
   output=$(run_tool "${name}" "${arguments}" 2>&1 || true)
   jq -n --arg id "$(jq -r '.id' <<<"${call_json}")" --arg content "${output}" '{role: "tool", tool_call_id: $id, content: $content}'
 }
@@ -115,7 +116,10 @@ main() {
   rendered_tool_definitions=$(render_tool_definitions)
   messages_file=$(mktemp)
   trap remove_messages_file EXIT
-  jq -n --arg system "$(scripts/review/build-review-prompt.sh holistic)" --arg diff "$(scripts/review/read-pull-request-diff.sh)" \
+  local review_prompt diff_text
+  review_prompt=$(scripts/review/build-review-prompt.sh holistic)
+  diff_text=$(scripts/review/read-pull-request-diff.sh)
+  jq -n --arg system "${review_prompt}" --arg diff "${diff_text}" \
     '[{role: "system", content: $system}, {role: "user", content: ("Review this diff. Use the tools to read the repository and documentation before you report a finding. Answer in JSON.\n\n" + $diff)}]' > "${messages_file}"
   run_rounds "${messages_file}"
 }

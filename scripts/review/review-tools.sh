@@ -5,6 +5,7 @@ readonly MAXIMUM_GREP_MATCHES=100
 readonly MAXIMUM_LISTED_FILES=200
 readonly MAXIMUM_READ_LINE=1000000
 readonly MAXIMUM_FETCH_BYTES=2000000
+readonly MAXIMUM_FETCH_REDIRECTS=0
 readonly FETCH_TIMEOUT_SECONDS=20
 readonly ALLOWED_FETCH_HOSTS_FILE="${BASH_SOURCE[0]%/*}/allowed-fetch-hosts.txt"
 
@@ -56,7 +57,7 @@ tool_fetch_url() {
   [[ "${url}" =~ ^https://([^/:]+)(/|$) ]] || { echo "error: only https urls are allowed"; return 0; }
   host="${BASH_REMATCH[1]}"
   grep -qxF -- "${host}" "${ALLOWED_FETCH_HOSTS_FILE}" || { echo "error: host ${host} is not an allowed documentation host"; return 0; }
-  curl -fsSL --proto '=https' --max-redirs 3 --max-time "${FETCH_TIMEOUT_SECONDS}" --max-filesize "${MAXIMUM_FETCH_BYTES}" "${url}" 2>&1 \
+  curl -fsSL --proto '=https' --max-redirs "${MAXIMUM_FETCH_REDIRECTS}" --max-time "${FETCH_TIMEOUT_SECONDS}" --max-filesize "${MAXIMUM_FETCH_BYTES}" "${url}" 2>&1 \
     | sed 's/<script[^>]*>.*<\/script>//g; s/<[^>]*>/ /g; s/&nbsp;/ /g; s/&quot;/"/g; s/&amp;/\&/g' | tr -s ' \n' | limit_output
 }
 

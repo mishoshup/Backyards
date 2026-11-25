@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+cd "$(dirname "$0")/../.."
+# shellcheck source=/dev/null
+source .github/scripts/review/review-constants.sh
+
 readonly review_mode="${1:?mode required}"
 readonly MAXIMUM_POSTED_FINDINGS=30
 
@@ -13,7 +17,7 @@ describe_count() {
 }
 
 record_result() {
-  echo "$1: $2" > "${RUNNER_TEMP:-/tmp}/review-result-$1"
+  echo "$1: $2" > "$(review_result_path "$1")"
 }
 
 describe_truncation() {
@@ -21,7 +25,7 @@ describe_truncation() {
 }
 
 has_valid_answer() {
-  jq -e '.violations | arrays' <<<"$1" > /dev/null 2>&1
+  jq -e '.violations | arrays' <<<"$1" > /dev/null
 }
 
 reject_missing_answer() {
@@ -51,8 +55,10 @@ main() {
   local review_json
   review_json=$(cat)
   has_valid_answer "${review_json}" || reject_missing_answer
-  record_result "${review_mode}" "$(describe_count "$(jq '.violations | length' <<<"${review_json}")")$(describe_truncation "$(jq '.violations | length' <<<"${review_json}")")"
-  if [[ "$(jq '.violations | length' <<<"${review_json}")" -eq 0 ]]; then
+  local finding_count
+  finding_count=$(jq '.violations | length' <<<"${review_json}")
+  record_result "${review_mode}" "$(describe_count "${finding_count}")$(describe_truncation "${finding_count}")"
+  if [[ "${finding_count}" -eq 0 ]]; then
     return 0
   fi
   : "${REVIEW_HEAD_SHA:?reviewed commit required}"

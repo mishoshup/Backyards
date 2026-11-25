@@ -52,5 +52,5 @@ gh api graphql -f query='mutation{resolveReviewThread(input:{threadId:"THREAD_ID
 - Confirm the account with `gh auth status`. It must be `mishoshup`.
 - A failing check that is not caused by the change is reported, not hidden. Do not merge over a failing required check.
 - When the review service returns an error such as insufficient balance, stop the loop and report it. Do not merge without a completed review.
-- Do not wait by polling in a tight loop. Use `gh event listen` for the pull request, or sleep between checks.
+- Wait for the review with `gh run watch <run id> --exit-status`, which blocks until the run finishes. Do not poll with sleep.
 - The pull request is updated by adding commits. Never force-push and never merge `main` into the branch.

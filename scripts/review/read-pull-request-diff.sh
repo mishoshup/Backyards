@@ -12,10 +12,16 @@ fetch_diff() {
   fi
 }
 
+diff_new_file() {
+  local differences_found_status=1 status=0
+  git diff --no-index -- /dev/null "$1" || status=$?
+  [ "${status}" -le "${differences_found_status}" ]
+}
+
 diff_untracked_files() {
   local untracked_file
   while IFS= read -r untracked_file; do
-    git diff --no-index -- /dev/null "${untracked_file}" || [ $? -eq 1 ]
+    diff_new_file "${untracked_file}"
   done < <(git ls-files --others --exclude-standard)
 }
 

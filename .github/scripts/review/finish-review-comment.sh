@@ -7,15 +7,15 @@ source "$(dirname "$0")/review-constants.sh"
 readonly comment_id="${1:?comment id required}"
 readonly job_status="${2:?job status required}"
 readonly head_sha="${3:?head SHA required}"
-readonly result_directory="${RUNNER_TEMP}"
 
 read_result_line() {
-  local result_file="${result_directory}/review-result-$1"
+  local result_file
+  result_file=$(review_result_path "$1")
   if [[ -f "${result_file}" ]]; then cat "${result_file}"; else echo "$1: did not run"; fi
 }
 
 count_findings() {
-  cat "${result_directory}"/review-result-* 2>/dev/null | awk '{ total += $2 } END { print total + 0 }'
+  cat "$(review_result_path inline)" "$(review_result_path holistic)" 2>/dev/null | awk '{ total += $2 } END { print total + 0 }'
 }
 
 build_body() {
@@ -28,7 +28,7 @@ update_comment() {
 
 react_to_outcome() {
   .github/scripts/review/remove-comment-reaction.sh "${comment_id}" "eyes" "github-actions[bot]"
-  if [[ "${job_status}" == "success" && -f "${result_directory}/review-result-inline" && -f "${result_directory}/review-result-holistic" && "$(count_findings)" -eq 0 ]]; then
+  if [[ "${job_status}" == "success" && -f "$(review_result_path inline)" && -f "$(review_result_path holistic)" && "$(count_findings)" -eq 0 ]]; then
     .github/scripts/review/add-comment-reaction.sh "${comment_id}" "+1"
   fi
 }
