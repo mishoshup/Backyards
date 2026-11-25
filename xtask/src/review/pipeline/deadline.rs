@@ -6,7 +6,13 @@ use crate::review::pipeline::finish::finish_failure;
 use crate::review::pipeline::options::ReviewRun;
 
 const REVIEW_DEADLINE: Duration = Duration::from_mins(18);
-const DEADLINE_REASON: &str = "The review exceeded its 22 minute budget before the job time limit.";
+
+fn describe_deadline_reason() -> String {
+    format!(
+        "The review exceeded its {} minute budget before the job time limit.",
+        REVIEW_DEADLINE.as_secs() / 60
+    )
+}
 
 pub fn with_deadline<Outcome>(
     run: ReviewRun<'_>,
@@ -43,6 +49,6 @@ fn fail_when_overdue(run: ReviewRun<'_>, comment: &ProgressComment, is_settled: 
 }
 
 fn abandon_review(run: ReviewRun<'_>, comment: &ProgressComment) -> ! {
-    let exit_code = finish_failure(run, comment, DEADLINE_REASON).map_or(2, |()| 1);
+    let exit_code = finish_failure(run, comment, &describe_deadline_reason()).map_or(2, |()| 1);
     std::process::exit(exit_code)
 }

@@ -1,4 +1,5 @@
 use std::path::PathBuf;
+use std::time::Duration;
 
 use crate::report::GateError;
 use crate::workspace::{capture_command, capture_command_limited};
@@ -8,12 +9,21 @@ pub struct GitHub {
     program: String,
     repository: String,
     directory: PathBuf,
+    posting_pause: Duration,
+    retry_backoff: Duration,
 }
+
+const POSTING_PAUSE: Duration = Duration::from_secs(2);
+const RETRY_BACKOFF: Duration = Duration::from_secs(10);
+const POST_RETRIES: u32 = 2;
 
 impl GitHub {
     #[must_use]
     pub fn new(repository: String, directory: PathBuf) -> Self {
-        Self::with_program("gh".to_owned(), repository, directory)
+        let mut github = Self::with_program("gh".to_owned(), repository, directory);
+        github.posting_pause = POSTING_PAUSE;
+        github.retry_backoff = RETRY_BACKOFF;
+        github
     }
 
     #[must_use]
@@ -22,6 +32,8 @@ impl GitHub {
             program,
             repository,
             directory,
+            posting_pause: Duration::ZERO,
+            retry_backoff: Duration::ZERO,
         }
     }
 
@@ -32,6 +44,19 @@ impl GitHub {
 
     pub fn call(&self, arguments: &[&str]) -> Result<String, GateError> {
         capture_command(&self.directory, &self.program, arguments, &[0])
+    }
+
+    pub fn post_content(&self, route_suffix: &str, options: &[&str]) -> Result<String, GateError> {
+        std::thread::park_timeout(self.posting_pause);
+        let mut result = self.api(route_suffix, options);
+        for attempt in 1..=POST_RETRIES {
+            if result.is_ok() {
+                break;
+            }
+            std::thread::park_timeout(self.retry_backoff * attempt);
+            result = self.api(route_suffix, options);
+        }
+        result
     }
 
     pub fn api_limited(

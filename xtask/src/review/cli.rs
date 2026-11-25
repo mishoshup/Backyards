@@ -74,15 +74,18 @@ fn parse_status_prefix(value: &str) -> Result<String, String> {
 }
 
 fn is_valid_status_prefix(value: &str) -> bool {
-    let allowed = |character: char| {
-        character.is_ascii_lowercase()
-            || character.is_ascii_digit()
-            || matches!(character, '/' | '_' | '-')
-    };
-    let edge =
-        |character: Option<char>| character.is_some_and(|symbol| symbol.is_ascii_alphanumeric());
     !value.is_empty()
-        && value.chars().all(allowed)
-        && edge(value.chars().next())
-        && edge(value.chars().last())
+        && value.chars().all(is_allowed_status_character)
+        && is_alphanumeric_edge(value.chars().next())
+        && is_alphanumeric_edge(value.chars().last())
+}
+
+const fn is_allowed_status_character(character: char) -> bool {
+    character.is_ascii_lowercase()
+        || character.is_ascii_digit()
+        || matches!(character, '/' | '_' | '-')
+}
+
+fn is_alphanumeric_edge(character: Option<char>) -> bool {
+    character.is_some_and(|symbol| symbol.is_ascii_alphanumeric())
 }

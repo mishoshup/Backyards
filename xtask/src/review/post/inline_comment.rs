@@ -25,7 +25,7 @@ pub fn post_inline_comment(
     let line_field = format!("line={}", violation.line);
     let commit_field = format!("commit_id={}", target.head_sha);
     github
-        .api(
+        .post_content(
             &format!("pulls/{}/comments", target.pull_request),
             &[
                 "-X",

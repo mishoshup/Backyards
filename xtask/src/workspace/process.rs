@@ -82,7 +82,7 @@ pub fn capture_command_limited(
     let mut child = spawn_with_piped_output(directory, program, arguments, &description)?;
     let captured = read_at_most(&mut child, limit + 1, &description)?;
     if captured.len() > limit {
-        discard_child(child);
+        discard_child(child, &description)?;
         return Ok(String::from_utf8_lossy(&captured).into_owned());
     }
     let output = wait_for_output(child, &description)?;
@@ -122,9 +122,14 @@ fn read_at_most(child: &mut Child, limit: usize, description: &str) -> Result<Ve
     Ok(captured)
 }
 
-fn discard_child(mut child: Child) {
-    child.kill().ok();
-    child.wait().ok();
+fn discard_child(mut child: Child, description: &str) -> Result<(), GateError> {
+    child
+        .kill()
+        .and_then(|()| child.wait().map(|_| ()))
+        .map_err(|source| GateError::RunCommand {
+            command: description.to_owned(),
+            source,
+        })
 }
 
 fn wait_for_output(child: Child, description: &str) -> Result<Output, GateError> {

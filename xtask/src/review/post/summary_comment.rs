@@ -67,7 +67,7 @@ pub fn post_summary_comment(
         describe_placement_failures(&placement.failures)
     );
     github
-        .api(
+        .post_content(
             &format!("issues/{}/comments", target.pull_request),
             &["-X", "POST", "-f", &body_field],
         )
