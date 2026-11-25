@@ -17,7 +17,7 @@ render_tool_definitions() {
 }
 
 build_request_body() {
-  jq -n --arg model "${model}" --arg choice "$2" --slurpfile messages "$1" --argjson tools "$(render_tool_definitions)" \
+  jq -n --arg model "${model}" --arg choice "$2" --slurpfile messages "$1" --argjson tools "${rendered_tool_definitions}" \
     '{model: $model, messages: $messages[0], tools: $tools, tool_choice: $choice}'
 }
 
@@ -60,7 +60,7 @@ answer_tool_calls() {
 }
 
 isolate_json_object() {
-  awk 'BEGIN { depth = 0 } { for (i = 1; i <= length($0); i++) { c = substr($0, i, 1); if (c == "{") { depth++; started = 1 } if (started) printf "%s", c; if (c == "}") { depth--; if (started && depth == 0) { exit } } } if (started) printf "\n" }'
+  awk 'BEGIN { depth = 0 } { for (i = 1; i <= length($0); i++) { c = substr($0, i, 1); if (c == "{") { depth++; is_started = 1 } if (is_started) printf "%s", c; if (c == "}") { depth--; if (is_started && depth == 0) { exit } } } if (is_started) printf "\n" }'
 }
 
 parse_violations() {
@@ -108,7 +108,10 @@ remove_messages_file() {
   rm -f -- "${messages_file}"
 }
 
+rendered_tool_definitions=""
+
 main() {
+  rendered_tool_definitions=$(render_tool_definitions)
   messages_file=$(mktemp)
   trap remove_messages_file EXIT
   jq -n --arg system "$(scripts/review/build-review-prompt.sh holistic)" --arg diff "$(scripts/review/read-pull-request-diff.sh)" \

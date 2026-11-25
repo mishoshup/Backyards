@@ -2,6 +2,7 @@
 set -euo pipefail
 
 readonly review_mode="${1:?mode required}"
+readonly MAXIMUM_POSTED_FINDINGS=30
 
 finding_noun() {
   if [ "$1" -eq 1 ]; then echo finding; else echo findings; fi
@@ -52,6 +53,7 @@ main() {
   fi
   : "${REVIEW_HEAD_SHA:?reviewed commit required}"
   export REVIEW_HEAD_SHA
+  review_json=$(jq --argjson cap "${MAXIMUM_POSTED_FINDINGS}" '.violations |= .[:$cap]' <<<"${review_json}")
   post_each_violation "${review_json}" || post_summary_comment "${review_json}"
 }
 

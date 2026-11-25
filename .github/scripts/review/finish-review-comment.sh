@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# shellcheck source=/dev/null
+source "$(dirname "$0")/review-constants.sh"
+
 readonly comment_id="${1:?comment id required}"
 readonly job_status="${2:?job status required}"
 readonly head_sha="${3:?head SHA required}"
@@ -16,7 +19,7 @@ count_findings() {
 }
 
 build_body() {
-  printf 'Agent review of %s: %s\n\n- %s\n- %s\n' "${head_sha:0:7}" "$1" "$(read_result_line inline)" "$(read_result_line holistic)"
+  printf 'Agent review of %s: %s\n\n- %s\n- %s\n' "${head_sha:0:SHORT_SHA_LENGTH}" "$1" "$(read_result_line inline)" "$(read_result_line holistic)"
 }
 
 update_comment() {
@@ -25,7 +28,7 @@ update_comment() {
 
 react_to_outcome() {
   .github/scripts/review/remove-comment-reaction.sh "${comment_id}" "eyes" "github-actions[bot]"
-  if [[ "${job_status}" == "success" && "$(count_findings)" -eq 0 ]]; then
+  if [[ "${job_status}" == "success" && -f "${result_directory}/review-result-inline" && -f "${result_directory}/review-result-holistic" && "$(count_findings)" -eq 0 ]]; then
     .github/scripts/review/add-comment-reaction.sh "${comment_id}" "+1"
   fi
 }

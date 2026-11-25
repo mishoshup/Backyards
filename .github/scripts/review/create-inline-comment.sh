@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# shellcheck source=/dev/null
+source "$(dirname "$0")/review-constants.sh"
+
 readonly pull_request_number="${1:?pull request number required}"
 readonly file_path="${2:?path required}"
 readonly comment_body="${3:?body required}"
@@ -26,7 +29,7 @@ validate_rule_reference() {
 }
 
 build_footer() {
-  local short_sha="${1:0:7}"
+  local short_sha="${1:0:SHORT_SHA_LENGTH}"
   printf '\n\n---\n\nReviewed at: [%s](https://github.com/%s/commit/%s) | Rate this suggestion with a thumbs up or down; reactions measure reviewer quality.' \
     "${short_sha}" "${GITHUB_REPOSITORY}" "$1"
 }

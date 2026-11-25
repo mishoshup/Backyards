@@ -107,7 +107,7 @@ jobs:
         run: .github/scripts/review/record-review-complete.sh "${{ steps.skip.outputs.head_sha }}" "${{ steps.skip.outputs.context }}" "Reviewed at this commit - comment /agent-review to re-run"
 
       - name: Record that no reviewable files changed
-        if: steps.skip.outputs.should_skip != 'true' && steps.filter.outputs.has_reviewable_files != 'true'
+        if: steps.skip.outcome == 'success' && steps.filter.outcome == 'success' && steps.skip.outputs.should_skip != 'true' && steps.filter.outputs.has_reviewable_files != 'true'
         run: .github/scripts/review/record-review-complete.sh "${{ steps.skip.outputs.head_sha }}" "${{ steps.skip.outputs.context }}" "Skipped - no reviewable files changed"
 
       - name: Publish the review result
