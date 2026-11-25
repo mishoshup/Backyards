@@ -1,5 +1,5 @@
 ---
-id: CONSISTENCY-06
+ruleId: CONSISTENCY-06
 enforcedBy: clippy::unwrap_used, expect_used, map_err_ignore, let_underscore_must_use
 source: Clippy lint list (rust-lang.github.io/rust-clippy): unwrap_used, expect_used, map_err_ignore; Rust API Guidelines (rust-lang.github.io/api-guidelines) C-GOOD-ERR
 ---

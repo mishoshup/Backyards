@@ -1,5 +1,5 @@
 ---
-id: CLEAN-04
+ruleId: CLEAN-04
 enforcedBy: review
 source: Functional core, imperative shell (Bernhardt); plan and apply as in Terraform
 ---

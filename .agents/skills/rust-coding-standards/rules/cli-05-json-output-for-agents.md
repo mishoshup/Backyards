@@ -1,5 +1,5 @@
 ---
-id: CLI-05
+ruleId: CLI-05
 enforcedBy: integration test per command; JSON schema generated from the types
 source: clig.dev (--json output); gh and kubectl output flags
 ---

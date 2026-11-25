@@ -1,5 +1,5 @@
 ---
-id: ASYNC-02
+ruleId: ASYNC-02
 enforcedBy: compiler; clippy::future_not_send
 source: Tokio documentation (spawn requires Send + 'static); Clippy lint list (rust-lang.github.io/rust-clippy): future_not_send
 ---

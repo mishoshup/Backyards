@@ -1,5 +1,5 @@
 ---
-id: TUI-02
+ruleId: TUI-02
 enforcedBy: snapshot tests with `TestBackend`; review
 source: ratatui documentation (Widget rendering, TestBackend snapshots)
 ---

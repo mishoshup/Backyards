@@ -1,5 +1,5 @@
 ---
-id: CONSISTENCY-19
+ruleId: CONSISTENCY-19
 enforcedBy: review; message catalog tests
 source: Project convention (general practice, enforced by review)
 ---

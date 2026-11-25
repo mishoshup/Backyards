@@ -1,5 +1,5 @@
 ---
-id: CLEAN-03
+ruleId: CLEAN-03
 enforcedBy: clippy::disallowed_methods (std::env::var, std::env::current_dir in feature crates); review
 source: Hexagonal architecture (Cockburn): ambient state behind ports
 ---

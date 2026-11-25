@@ -1,5 +1,5 @@
 ---
-id: SERDE-01
+ruleId: SERDE-01
 enforcedBy: unit test that an unknown key fails; review
 source: serde documentation (container attribute deny_unknown_fields)
 ---

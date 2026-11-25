@@ -1,5 +1,5 @@
 ---
-id: SERDE-02
+ruleId: SERDE-02
 enforcedBy: unit tests of rejected values
 source: serde documentation (container attribute try_from)
 ---

@@ -1,5 +1,5 @@
 ---
-id: MCP-01
+ruleId: MCP-01
 enforcedBy: scripts/check-architecture.sh (mcp crate depends on feature crates only); review
 source: rmcp documentation (tool_router, tool)
 ---

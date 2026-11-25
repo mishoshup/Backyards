@@ -1,5 +1,5 @@
 ---
-id: PRIVACY-01
+ruleId: PRIVACY-01
 enforcedBy: review; redaction unit tests; clippy::dbg_macro
 source: Project convention (general practice, enforced by review); secrecy crate (Debug prints [REDACTED])
 ---

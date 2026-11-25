@@ -1,5 +1,5 @@
 ---
-id: GPUI-01
+ruleId: GPUI-01
 enforcedBy: scripts/check-architecture.sh (desktop crate depends on feature crates only); review
 source: Hexagonal architecture (Cockburn); GPUI Entity model
 ---

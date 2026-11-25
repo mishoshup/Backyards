@@ -1,5 +1,5 @@
 ---
-id: STRUCTURE-01
+ruleId: STRUCTURE-01
 enforcedBy: clippy::too_many_lines (30), clippy::cognitive_complexity (8); review for closures
 source: workspace AGENTS.md code decomposition style; clippy::too_many_lines, cognitive_complexity
 ---

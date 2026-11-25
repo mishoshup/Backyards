@@ -1,5 +1,5 @@
 ---
-id: SAFETY-01
+ruleId: SAFETY-01
 enforcedBy: review; integration tests for dry run and allowlist
 source: Project safety policy (user requirement); dry-run default as in Terraform plan
 ---

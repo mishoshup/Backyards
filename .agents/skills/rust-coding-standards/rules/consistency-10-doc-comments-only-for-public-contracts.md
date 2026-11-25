@@ -1,5 +1,5 @@
 ---
-id: CONSISTENCY-10
+ruleId: CONSISTENCY-10
 enforcedBy: clippy::missing_docs_in_private_items is off; review
 source: Rust API Guidelines (rust-lang.github.io/api-guidelines) C-FAILURE (document errors and panics); rustdoc book
 ---

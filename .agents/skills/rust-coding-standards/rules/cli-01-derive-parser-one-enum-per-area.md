@@ -1,5 +1,5 @@
 ---
-id: CLI-01
+ruleId: CLI-01
 enforcedBy: scripts/check-architecture.sh (commands registered in one table); unit test
 source: clap documentation (derive tutorial, Parser, Subcommand)
 ---

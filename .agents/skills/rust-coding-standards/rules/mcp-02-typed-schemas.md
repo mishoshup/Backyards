@@ -1,5 +1,5 @@
 ---
-id: MCP-02
+ruleId: MCP-02
 enforcedBy: compiler (`schemars::JsonSchema` derive); schema snapshot test
 source: rmcp documentation (Parameters, Json, schemars)
 ---

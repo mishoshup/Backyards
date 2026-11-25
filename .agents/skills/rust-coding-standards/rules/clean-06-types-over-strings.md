@@ -1,5 +1,5 @@
 ---
-id: CLEAN-06
+ruleId: CLEAN-06
 enforcedBy: review; clippy::wildcard_enum_match_arm
 source: Rust API Guidelines (rust-lang.github.io/api-guidelines) C-NEWTYPE; Clippy lint list (rust-lang.github.io/rust-clippy): wildcard_enum_match_arm
 ---

@@ -1,5 +1,5 @@
 ---
-id: PERF-01
+ruleId: PERF-01
 enforcedBy: clippy::redundant_clone, needless_pass_by_value, clone_on_ref_ptr
 source: Clippy lint list (rust-lang.github.io/rust-clippy): redundant_clone, needless_pass_by_value; The Rust Performance Book (heap allocations)
 ---

@@ -1,5 +1,5 @@
 ---
-id: ASYNC-01
+ruleId: ASYNC-01
 enforcedBy: scripts/check-architecture.sh (no `#[tokio::main]` in library crates)
 source: Tokio documentation (runtime in the binary; #[tokio::main])
 ---

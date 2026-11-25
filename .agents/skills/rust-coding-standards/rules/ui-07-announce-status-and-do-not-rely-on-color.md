@@ -1,5 +1,5 @@
 ---
-id: UI-07
+ruleId: UI-07
 enforcedBy: review; output tests with NO_COLOR set
 source: no-color.org; clig.dev (color); Project convention (general practice, enforced by review)
 ---

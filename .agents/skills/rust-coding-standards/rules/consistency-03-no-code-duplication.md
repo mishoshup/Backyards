@@ -1,5 +1,5 @@
 ---
-id: CONSISTENCY-03
+ruleId: CONSISTENCY-03
 enforcedBy: review; the second caller moves the helper to a shared type
 source: Project convention (general practice, enforced by review)
 ---

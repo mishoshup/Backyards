@@ -1,5 +1,5 @@
 ---
-id: PERF-11
+ruleId: PERF-11
 enforcedBy: review
 source: Tokio documentation (try_join!); Project convention (general practice, enforced by review)
 ---

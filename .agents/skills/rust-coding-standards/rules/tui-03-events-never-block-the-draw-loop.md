@@ -1,5 +1,5 @@
 ---
-id: TUI-03
+ruleId: TUI-03
 enforcedBy: review
 source: ratatui documentation (event handling and async patterns)
 ---

@@ -1,5 +1,5 @@
 ---
-id: UI-01
+ruleId: UI-01
 enforcedBy: review
 source: Project convention (general practice, enforced by review); clig.dev (progress, only when a terminal)
 ---

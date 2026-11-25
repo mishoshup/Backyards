@@ -1,5 +1,5 @@
 ---
-id: CLI-04
+ruleId: CLI-04
 enforcedBy: review; integration tests assert stdout, stderr and the exit code
 source: clig.dev (output: stdout for data, stderr for messages; exit codes)
 ---

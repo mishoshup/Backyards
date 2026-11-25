@@ -1,5 +1,5 @@
 ---
-id: CLEAN-02
+ruleId: CLEAN-02
 enforcedBy: review
 source: Project convention (general practice, enforced by review)
 ---

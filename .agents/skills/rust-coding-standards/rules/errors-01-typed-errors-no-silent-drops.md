@@ -1,5 +1,5 @@
 ---
-id: ERRORS-01
+ruleId: ERRORS-01
 enforcedBy: clippy::unwrap_used, expect_used, panic, let_underscore_must_use; review for silent drops
 source: thiserror and anyhow documentation (libraries typed, binaries anyhow); workspace AGENTS.md silent-drop rule
 ---

@@ -1,5 +1,5 @@
 ---
-id: CLEAN-05
+ruleId: CLEAN-05
 enforcedBy: review; clippy::rc_mutex, mutex_atomic
 source: Project convention (general practice, enforced by review); Clippy lint list (rust-lang.github.io/rust-clippy): rc_mutex
 ---

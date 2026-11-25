@@ -1,0 +1,123 @@
+name: agent-code-review
+
+permissions: {}
+
+on:
+  pull_request:
+    types: [opened, ready_for_review, synchronize]
+  issue_comment:
+    types: [created]
+
+jobs:
+  authorize:
+    permissions:
+      pull-requests: read
+    if: >-
+      (github.event_name == 'pull_request' && github.event.pull_request.draft != true && github.event.pull_request.head.repo.full_name == github.repository) ||
+      (github.event_name == 'issue_comment' && github.event.issue.pull_request && contains(github.event.comment.body, '/agent-review'))
+    runs-on: ubuntu-latest
+    outputs:
+      is_authorized: ${{ steps.gate.outputs.is_authorized }}
+    steps:
+      - name: Check contributor authorization
+        id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          PULL_REQUEST_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
+          ACTOR_ASSOCIATION: ${{ github.event_name == 'pull_request' && github.event.pull_request.author_association || github.event.comment.author_association }}
+        run: |
+          head_repository=$(gh api "repos/${REPOSITORY}/pulls/${PULL_REQUEST_NUMBER}" --jq .head.repo.full_name)
+          case "${ACTOR_ASSOCIATION}" in
+            OWNER|MEMBER|COLLABORATOR) is_trusted_actor=true ;;
+            *) is_trusted_actor=false ;;
+          esac
+          if [[ "${is_trusted_actor}" == true && "${head_repository}" == "${REPOSITORY}" ]]; then
+            echo "is_authorized=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "is_authorized=false" >> "${GITHUB_OUTPUT}"
+          fi
+
+  review:
+    needs: authorize
+    if: needs.authorize.outputs.is_authorized == 'true'
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+      statuses: write
+    concurrency:
+      group: agent-review-${{ github.repository }}-${{ github.event.pull_request.number || github.event.issue.number }}
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      PULL_REQUEST_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
+      REPOSITORY: ${{ github.repository }}
+      GH_TOKEN: ${{ github.token }}
+      REVIEWER_CONTEXT: ai-review-completed/deepseek
+    steps:
+      - name: Check out the pull request head
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
+        with:
+          ref: refs/pull/${{ env.PULL_REQUEST_NUMBER }}/head
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Skip when this commit is already reviewed
+        id: skip
+        run: .github/scripts/review/should-skip-review.sh "${PULL_REQUEST_NUMBER}" "${REVIEWER_CONTEXT}"
+
+      - name: Select reviewable paths
+        if: steps.skip.outputs.should_skip != 'true'
+        id: filter
+        run: |
+          gh api --paginate "/repos/${REPOSITORY}/pulls/${PULL_REQUEST_NUMBER}/files" --jq '.[].filename' > "${RUNNER_TEMP}/changed-files.txt"
+          if .github/scripts/review/select-reviewable-paths.sh "${RUNNER_TEMP}/changed-files.txt"; then
+            echo "has_reviewable_files=true" >> "${GITHUB_OUTPUT}"
+          fi
+
+      - name: Extract allowed rule identifiers
+        if: steps.skip.outputs.should_skip != 'true'
+        run: .github/scripts/review/extract-allowed-rules.sh .agents/skills/rust-coding-standards/rules "${RUNNER_TEMP}/allowed-rules.txt"
+
+      - name: Post the in-progress comment
+        if: steps.skip.outputs.should_skip != 'true'
+        id: progress
+        run: .github/scripts/review/start-review-comment.sh "${PULL_REQUEST_NUMBER}" "${{ steps.skip.outputs.head_sha }}"
+
+      - name: Mark the review pending
+        if: steps.skip.outputs.should_skip != 'true' && steps.filter.outputs.has_reviewable_files == 'true'
+        run: .github/scripts/review/record-review-complete.sh "${{ steps.skip.outputs.head_sha }}" "${{ steps.skip.outputs.context }}" "Review in progress" pending
+
+      - name: Run the inline review
+        id: inline-review
+        if: steps.skip.outputs.should_skip != 'true' && steps.filter.outputs.has_reviewable_files == 'true'
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          REVIEW_HEAD_SHA: ${{ steps.skip.outputs.head_sha }}
+        run: scripts/review/run-review.sh inline
+
+      - name: Run the holistic review
+        id: holistic-review
+        if: steps.skip.outputs.should_skip != 'true' && steps.filter.outputs.has_reviewable_files == 'true'
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          REVIEW_HEAD_SHA: ${{ steps.skip.outputs.head_sha }}
+        run: scripts/review/run-review.sh holistic
+
+      - name: Record review completion
+        if: steps.skip.outputs.should_skip != 'true' && steps.filter.outputs.has_reviewable_files == 'true' && steps.inline-review.outcome == 'success' && steps.holistic-review.outcome == 'success'
+        run: .github/scripts/review/record-review-complete.sh "${{ steps.skip.outputs.head_sha }}" "${{ steps.skip.outputs.context }}" "Reviewed at this commit - comment /agent-review to re-run"
+
+      - name: Record that no reviewable files changed
+        if: steps.skip.outcome == 'success' && steps.filter.outcome == 'success' && steps.skip.outputs.should_skip != 'true' && steps.filter.outputs.has_reviewable_files != 'true'
+        run: .github/scripts/review/record-review-complete.sh "${{ steps.skip.outputs.head_sha }}" "${{ steps.skip.outputs.context }}" "Skipped - no reviewable files changed"
+
+      - name: Record review failure
+        if: failure() && steps.skip.outputs.should_skip != 'true' && steps.filter.outputs.has_reviewable_files == 'true'
+        run: .github/scripts/review/record-review-complete.sh "${{ steps.skip.outputs.head_sha }}" "${{ steps.skip.outputs.context }}" "Review did not complete" failure
+
+      - name: Publish the review result
+        if: always() && steps.skip.outputs.should_skip != 'true'
+        run: .github/scripts/review/finish-review-comment.sh "${{ steps.progress.outputs.comment_id }}" "${{ job.status }}" "${{ steps.skip.outputs.head_sha }}"

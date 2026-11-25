@@ -1,5 +1,5 @@
 ---
-id: GPUI-05
+ruleId: GPUI-05
 enforcedBy: review; test that each action has a binding
 source: GPUI documentation (actions!, on_action, key_context)
 ---

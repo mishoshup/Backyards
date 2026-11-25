@@ -1,5 +1,5 @@
 ---
-id: CONSISTENCY-09
+ruleId: CONSISTENCY-09
 enforcedBy: review; scripts/check-architecture.sh (no `utils.rs`, `helpers.rs`, `misc.rs`, `common.rs`)
 source: Project convention (general practice, enforced by review)
 ---

@@ -1,5 +1,5 @@
 ---
-id: TUI-01
+ruleId: TUI-01
 enforcedBy: review; test that a panic path restores
 source: ratatui documentation (ratatui::run, init, restore, panic hook)
 ---

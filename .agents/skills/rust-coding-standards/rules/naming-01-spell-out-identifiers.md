@@ -1,5 +1,5 @@
 ---
-id: NAMING-01
+ruleId: NAMING-01
 enforcedBy: clippy::min_ident_chars (clippy.toml allows only `id`)
 source: workspace AGENTS.md verbose naming; clippy::min_ident_chars
 ---

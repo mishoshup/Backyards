@@ -1,5 +1,5 @@
 ---
-id: CLEAN-07
+ruleId: CLEAN-07
 enforcedBy: review; clippy::option_option, struct_field_names
 source: Parse, don't validate (King); Rust API Guidelines (rust-lang.github.io/api-guidelines) C-VALIDATE
 ---

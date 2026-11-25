@@ -1,5 +1,5 @@
 ---
-id: PORTS-01
+ruleId: PORTS-01
 enforcedBy: review; scripts/check-architecture.sh (layer dependency rule and no cross imports)
 source: Layered architecture and the dependency inversion principle; hexagonal architecture (Cockburn); workspace AGENTS.md architecture section
 ---

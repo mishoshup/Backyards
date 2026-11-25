@@ -1,5 +1,5 @@
 ---
-id: SAFETY-02
+ruleId: SAFETY-02
 enforcedBy: unit tests on the default garden specification; integration test on a real garden
 source: BoxLite crate source 0.14.1 (SecurityOptions, NetworkSpec, PortSpec); workspace AGENTS.md safety rules
 ---

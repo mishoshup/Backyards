@@ -28,7 +28,28 @@ run_policy_check() {
   scripts/check-architecture.sh
 }
 
+run_workflow_lint() {
+  command -v actionlint >/dev/null 2>&1 || { echo "actionlint is required; install it with brew install actionlint" >&2; exit 1; }
+  actionlint .github/workflows/*.yml
+}
+
+run_workflow_policy_check() {
+  scripts/check-workflows.sh
+}
+
+run_shell_check() {
+  scripts/check-shell.sh
+}
+
+run_review_script_tests() {
+  scripts/test-review-scripts.sh
+}
+
 main() {
+  run_workflow_lint
+  run_workflow_policy_check
+  run_shell_check
+  run_review_script_tests
   run_policy_check
   if [ -d crates ] && [ -n "$(ls -A crates 2>/dev/null)" ]; then
     run_formatting_check

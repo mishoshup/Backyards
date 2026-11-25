@@ -1,5 +1,5 @@
 ---
-id: TEST-01
+ruleId: TEST-01
 enforcedBy: review; CI
 source: Project test policy (user requirement)
 ---

@@ -1,5 +1,5 @@
 ---
-id: COMMENTS-01
+ruleId: COMMENTS-01
 enforcedBy: scripts/check-policy.sh (markers, em dashes); review for the rest
 source: general practice for non-obvious comments; workspace AGENTS.md comment policy
 ---

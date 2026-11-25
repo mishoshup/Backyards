@@ -1,5 +1,5 @@
 ---
-id: CONSISTENCY-04
+ruleId: CONSISTENCY-04
 enforcedBy: rustc dead_code, unused_variables; clippy::unused_self, used_underscore_binding
 source: rustc dead_code and unused lints; Clippy lint list (rust-lang.github.io/rust-clippy): unused_self
 ---

@@ -1,5 +1,5 @@
 ---
-id: CONSISTENCY-01
+ruleId: CONSISTENCY-01
 enforcedBy: scripts/check-architecture.sh (`cfg(target_os` only under `platform/`)
 source: Hexagonal architecture (Cockburn); platform modules as in std::sys
 ---
