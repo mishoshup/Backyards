@@ -71,11 +71,18 @@ validate_findings() {
   cat "${content_file}"
 }
 
+content_file=""
+
+remove_content_file() {
+  rm -f -- "${content_file}"
+}
+
 main() {
-  local mode="$1" system_prompt diff_text content_file
+  local mode="$1" system_prompt diff_text
   system_prompt=$(scripts/review/build-review-prompt.sh "$mode")
   diff_text=$(scripts/review/read-pull-request-diff.sh)
   content_file=$(mktemp)
+  trap remove_content_file EXIT
   echo "review: ${mode} request started with $(select_model "$mode")" >&2
   build_request_body "$(select_model "$mode")" "$system_prompt" "$diff_text" \
     | send_streaming_request | tag_stream_events | collect_stream "$mode" "$content_file"

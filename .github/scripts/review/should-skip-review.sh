@@ -40,7 +40,7 @@ main() {
   {
     echo "head_sha=${head_sha}"
     echo "context=${status_context}"
-    echo "skip=$(decide_skip "${existing_state}")"
+    echo "should_skip=$(decide_skip "${existing_state}")"
   } >> "${GITHUB_OUTPUT}"
 }
 

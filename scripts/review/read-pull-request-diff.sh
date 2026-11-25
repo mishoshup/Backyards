@@ -4,8 +4,8 @@ set -euo pipefail
 maximum_diff_bytes=600000
 
 fetch_diff() {
-  if [ -n "${PR_NUMBER:-}" ]; then
-    gh pr diff "${PR_NUMBER}" --repo "${REPOSITORY}"
+  if [ -n "${PULL_REQUEST_NUMBER:-}" ]; then
+    gh pr diff "${PULL_REQUEST_NUMBER}" --repo "${REPOSITORY}"
   else
     git diff "${1:-origin/main}...HEAD"
   fi

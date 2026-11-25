@@ -14,7 +14,7 @@ record_result() {
 post_each_violation() {
   local violation failed=0
   while IFS= read -r violation; do
-    .github/scripts/review/create-inline-comment.sh "${PR_NUMBER}" \
+    .github/scripts/review/create-inline-comment.sh "${PULL_REQUEST_NUMBER}" \
       "$(jq -r .path <<<"${violation}")" "$(jq -r .body <<<"${violation}")" \
       "$(jq -r .line <<<"${violation}")" "${review_mode}" || failed=1
   done < <(jq -c '.violations[]' <<<"$1")
@@ -25,7 +25,7 @@ post_summary_comment() {
   local body
   body=$(jq -r --arg mode "${review_mode}" \
     '"Automated " + $mode + " review: some comments could not be placed inline.\n\n" + ([.violations[] | "- `" + .path + ":" + (.line | tostring) + "` " + .body] | join("\n"))' <<<"$1")
-  gh pr comment "${PR_NUMBER}" --repo "${REPOSITORY}" --body "${body}"
+  gh pr comment "${PULL_REQUEST_NUMBER}" --repo "${REPOSITORY}" --body "${body}"
 }
 
 main() {
@@ -35,6 +35,8 @@ main() {
   if [[ "$(jq '.violations | length' <<<"${review_json}")" -eq 0 ]]; then
     return 0
   fi
+  REVIEW_HEAD_SHA=$(gh api "repos/${REPOSITORY}/pulls/${PULL_REQUEST_NUMBER}" --jq .head.sha)
+  export REVIEW_HEAD_SHA
   post_each_violation "${review_json}" || post_summary_comment "${review_json}"
 }
 

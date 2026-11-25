@@ -28,9 +28,17 @@ build_footer() {
     "${short_sha}" "${GITHUB_REPOSITORY}" "$1"
 }
 
+resolve_head_sha() {
+  if [[ -n "${REVIEW_HEAD_SHA:-}" ]]; then
+    echo "${REVIEW_HEAD_SHA}"
+  else
+    gh api "repos/${GITHUB_REPOSITORY}/pulls/${pull_request_number}" --jq .head.sha
+  fi
+}
+
 post_comment() {
   local head_sha
-  head_sha=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${pull_request_number}" --jq .head.sha)
+  head_sha=$(resolve_head_sha)
   jq -n --arg body "${comment_body}$(build_footer "${head_sha}")" --arg path "${file_path}" \
     --argjson line "${line_number}" --arg sha "${head_sha}" \
     '{body: $body, path: $path, line: $line, side: "RIGHT", commit_id: $sha}' \

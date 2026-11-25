@@ -83,9 +83,15 @@ run_rounds() {
   return 1
 }
 
+messages_file=""
+
+remove_messages_file() {
+  rm -f -- "${messages_file}"
+}
+
 main() {
-  local messages_file
   messages_file=$(mktemp)
+  trap remove_messages_file EXIT
   jq -n --arg system "$(scripts/review/build-review-prompt.sh holistic)" --arg diff "$(scripts/review/read-pull-request-diff.sh)" \
     '[{role: "system", content: $system}, {role: "user", content: ("Review this diff. Use the tools to read the repository and documentation before you report a finding. Answer in JSON.\n\n" + $diff)}]' > "${messages_file}"
   run_rounds "${messages_file}"

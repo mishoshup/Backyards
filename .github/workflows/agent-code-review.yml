@@ -42,7 +42,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
-      PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
+      PULL_REQUEST_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
       REPOSITORY: ${{ github.repository }}
       GH_TOKEN: ${{ github.token }}
       REVIEWER_CONTEXT: ai-review-completed/deepseek
@@ -50,54 +50,54 @@ jobs:
       - name: Check out the pull request head
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
         with:
-          ref: refs/pull/${{ env.PR_NUMBER }}/head
+          ref: refs/pull/${{ env.PULL_REQUEST_NUMBER }}/head
           fetch-depth: 1
           persist-credentials: false
 
       - name: Skip when this commit is already reviewed
         id: skip
-        run: .github/scripts/review/should-skip-review.sh "${PR_NUMBER}" "${REVIEWER_CONTEXT}"
+        run: .github/scripts/review/should-skip-review.sh "${PULL_REQUEST_NUMBER}" "${REVIEWER_CONTEXT}"
 
       - name: Select reviewable paths
-        if: steps.skip.outputs.skip != 'true'
+        if: steps.skip.outputs.should_skip != 'true'
         id: filter
         run: |
-          gh api --paginate "/repos/${REPOSITORY}/pulls/${PR_NUMBER}/files" --jq '.[].filename' > "${RUNNER_TEMP}/changed-files.txt"
+          gh api --paginate "/repos/${REPOSITORY}/pulls/${PULL_REQUEST_NUMBER}/files" --jq '.[].filename' > "${RUNNER_TEMP}/changed-files.txt"
           if grep -qE '(\.rs$|(^|/)Cargo\.(toml|lock)$|^scripts/|^\.github/|^\.agents/|^\.claude/)' "${RUNNER_TEMP}/changed-files.txt"; then
-            echo "code=true" >> "${GITHUB_OUTPUT}"
+            echo "has_reviewable_files=true" >> "${GITHUB_OUTPUT}"
           fi
 
       - name: Extract allowed rule identifiers
-        if: steps.skip.outputs.skip != 'true'
+        if: steps.skip.outputs.should_skip != 'true'
         run: .github/scripts/review/extract-allowed-rules.sh .agents/skills/rust-coding-standards/rules "${RUNNER_TEMP}/allowed-rules.txt"
 
       - name: Post the in-progress comment
-        if: steps.skip.outputs.skip != 'true'
+        if: steps.skip.outputs.should_skip != 'true'
         id: progress
-        run: .github/scripts/review/start-review-comment.sh "${PR_NUMBER}" "${{ steps.skip.outputs.head_sha }}"
+        run: .github/scripts/review/start-review-comment.sh "${PULL_REQUEST_NUMBER}" "${{ steps.skip.outputs.head_sha }}"
 
       - name: Run the inline review
         id: inline-review
-        if: steps.skip.outputs.skip != 'true' && steps.filter.outputs.code == 'true'
+        if: steps.skip.outputs.should_skip != 'true' && steps.filter.outputs.has_reviewable_files == 'true'
         env:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
         run: scripts/review/run-review.sh inline
 
       - name: Run the holistic review
         id: holistic-review
-        if: steps.skip.outputs.skip != 'true' && steps.filter.outputs.code == 'true'
+        if: steps.skip.outputs.should_skip != 'true' && steps.filter.outputs.has_reviewable_files == 'true'
         env:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
         run: scripts/review/run-review.sh holistic
 
       - name: Record review completion
-        if: steps.skip.outputs.skip != 'true' && steps.filter.outputs.code == 'true' && steps.inline-review.outcome == 'success' && steps.holistic-review.outcome == 'success'
+        if: steps.skip.outputs.should_skip != 'true' && steps.filter.outputs.has_reviewable_files == 'true' && steps.inline-review.outcome == 'success' && steps.holistic-review.outcome == 'success'
         run: .github/scripts/review/record-review-complete.sh "${{ steps.skip.outputs.head_sha }}" "${{ steps.skip.outputs.context }}" "Reviewed at this commit - comment /agent-review to re-run"
 
       - name: Record that no reviewable files changed
-        if: steps.skip.outputs.skip != 'true' && steps.filter.outputs.code != 'true'
+        if: steps.skip.outputs.should_skip != 'true' && steps.filter.outputs.has_reviewable_files != 'true'
         run: .github/scripts/review/record-review-complete.sh "${{ steps.skip.outputs.head_sha }}" "${{ steps.skip.outputs.context }}" "Skipped - no reviewable files changed"
 
       - name: Publish the review result
-        if: always() && steps.skip.outputs.skip != 'true'
+        if: always() && steps.skip.outputs.should_skip != 'true'
         run: .github/scripts/review/finish-review-comment.sh "${{ steps.progress.outputs.comment_id }}" "${{ job.status }}" "${{ steps.skip.outputs.head_sha }}"
