@@ -8,7 +8,15 @@ fetch_diff() {
     gh pr diff "${PULL_REQUEST_NUMBER}" --repo "${REPOSITORY}"
   else
     git diff "$(git merge-base "${1:-origin/main}" HEAD)"
+    diff_untracked_files
   fi
+}
+
+diff_untracked_files() {
+  local untracked_file
+  while IFS= read -r untracked_file; do
+    git diff --no-index -- /dev/null "${untracked_file}" || [ $? -eq 1 ]
+  done < <(git ls-files --others --exclude-standard)
 }
 
 fetch_capped_diff() {

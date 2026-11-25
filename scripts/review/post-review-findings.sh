@@ -16,6 +16,10 @@ record_result() {
   echo "$1: $2" > "${RUNNER_TEMP:-/tmp}/review-result-$1"
 }
 
+describe_truncation() {
+  if [ "$1" -gt "${MAXIMUM_POSTED_FINDINGS}" ]; then echo " (first ${MAXIMUM_POSTED_FINDINGS} posted)"; fi
+}
+
 has_valid_answer() {
   jq -e '.violations | arrays' <<<"$1" > /dev/null 2>&1
 }
@@ -47,7 +51,7 @@ main() {
   local review_json
   review_json=$(cat)
   has_valid_answer "${review_json}" || reject_missing_answer
-  record_result "${review_mode}" "$(describe_count "$(jq '.violations | length' <<<"${review_json}")")"
+  record_result "${review_mode}" "$(describe_count "$(jq '.violations | length' <<<"${review_json}")")$(describe_truncation "$(jq '.violations | length' <<<"${review_json}")")"
   if [[ "$(jq '.violations | length' <<<"${review_json}")" -eq 0 ]]; then
     return 0
   fi

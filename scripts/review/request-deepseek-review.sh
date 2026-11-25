@@ -1,16 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-base_url="${DEEPSEEK_BASE_URL:-https://api.deepseek.com}"
+cd "$(dirname "$0")/../.."
+# shellcheck source=/dev/null
+source scripts/review/deepseek-client.sh
+
 readonly request_timeout_seconds=300
 readonly heartbeat_interval_seconds=15
 
-select_model() {
-  case "$1" in
-    inline) echo "${REVIEW_MODEL_INLINE:-deepseek-flash}" ;;
-    holistic) echo "${REVIEW_MODEL_HOLISTIC:-deepseek-flash}" ;;
-  esac
-}
 
 build_request_body() {
   local model="$1" system_prompt="$2" diff_text="$3"
@@ -26,10 +23,7 @@ build_request_body() {
 }
 
 send_streaming_request() {
-  curl -fsSN --max-time "${request_timeout_seconds}" "${base_url}/chat/completions" \
-    -H "Authorization: Bearer ${DEEPSEEK_API_KEY}" \
-    -H "Content-Type: application/json" \
-    --data-binary @-
+  post_to_deepseek -fsSN --max-time "${request_timeout_seconds}"
 }
 
 tag_stream_events() {
@@ -83,8 +77,8 @@ main() {
   diff_text=$(scripts/review/read-pull-request-diff.sh)
   content_file=$(mktemp)
   trap remove_content_file EXIT
-  echo "review: ${mode} request started with $(select_model "$mode")" >&2
-  build_request_body "$(select_model "$mode")" "$system_prompt" "$diff_text" \
+  echo "review: ${mode} request started with $(select_review_model "$mode")" >&2
+  build_request_body "$(select_review_model "$mode")" "$system_prompt" "$diff_text" \
     | send_streaming_request | tag_stream_events | collect_stream "$mode" "$content_file"
   validate_findings "$content_file"
 }

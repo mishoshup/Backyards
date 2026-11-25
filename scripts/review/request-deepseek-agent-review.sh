@@ -4,11 +4,13 @@ set -euo pipefail
 cd "$(dirname "$0")/../.."
 # shellcheck source=/dev/null
 source scripts/review/review-tools.sh
+# shellcheck source=/dev/null
+source scripts/review/deepseek-client.sh
 
-readonly base_url="${DEEPSEEK_BASE_URL:-https://api.deepseek.com}"
 readonly request_timeout_seconds=120
 readonly maximum_rounds=8
-readonly model="${REVIEW_MODEL_HOLISTIC:-deepseek-flash}"
+model="$(select_review_model holistic)"
+readonly model
 readonly tool_definitions="scripts/review/tool-definitions.json"
 
 render_tool_definitions() {
@@ -22,8 +24,7 @@ build_request_body() {
 }
 
 post_chat_completion() {
-  curl -sS --max-time "${request_timeout_seconds}" -w '\n%{http_code}' "${base_url}/chat/completions" \
-    -H "Authorization: Bearer ${DEEPSEEK_API_KEY}" -H "Content-Type: application/json" --data-binary @-
+  post_to_deepseek -sS --max-time "${request_timeout_seconds}" -w '\n%{http_code}'
 }
 
 call_model() {

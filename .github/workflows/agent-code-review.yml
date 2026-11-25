@@ -48,7 +48,7 @@ jobs:
       statuses: write
     concurrency:
       group: agent-review-${{ github.repository }}-${{ github.event.pull_request.number || github.event.issue.number }}
-      cancel-in-progress: true
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     timeout-minutes: 25
     env:

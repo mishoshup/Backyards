@@ -40,8 +40,14 @@ tool_grep() {
   pattern=$(jq -r '.pattern' <<<"${arguments}")
   path=$(jq -r '.path // "."' <<<"${arguments}")
   resolved=$(resolve_inside_workspace "${path}") || { echo "error: path is outside the repository or missing"; return 0; }
-  grep -rnIE --exclude-dir=.git --exclude-dir=target -- "${pattern}" "${resolved}" 2>/dev/null \
-    | sed "s#^${PWD}/##" | head -n "${MAXIMUM_GREP_MATCHES}" | limit_output
+  local matches status=0
+  matches=$(grep -rnIE --exclude-dir=.git --exclude-dir=target -- "${pattern}" "${resolved}" 2>&1) || status=$?
+  if [ "${status}" -gt 1 ]; then
+    echo "error: grep failed: ${matches}"
+    return 0
+  fi
+  local workspace_prefix="${PWD}/"
+  printf "%s\n" "${matches//${workspace_prefix}/}" | head -n "${MAXIMUM_GREP_MATCHES}" | limit_output
 }
 
 tool_fetch_url() {
