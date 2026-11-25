@@ -1,4 +1,4 @@
-use crate::report::{GateError, write_report_line};
+use crate::report::{GateError, pluralize, write_report_line};
 use crate::review::ReviewerMode;
 use crate::review::github::{GitHub, ProgressComment, StatusState, StatusUpdate};
 use crate::review::pipeline::options::ReviewRun;
@@ -24,15 +24,10 @@ pub fn summarize(outcomes: &[(ReviewerMode, ValidationOutcome)]) -> Vec<ReviewSu
 }
 
 pub fn describe_summary(summary: &ReviewSummary) -> String {
-    let noun = if summary.accepted == 1 {
-        "finding"
-    } else {
-        "findings"
-    };
     let count = if summary.accepted == 0 {
         "no findings, all ok".to_owned()
     } else {
-        format!("{} {noun}", summary.accepted)
+        pluralize(summary.accepted, "finding", "findings")
     };
     format!(
         "{}: {count} ({} dropped as invalid)",
@@ -93,7 +88,7 @@ fn update_comment_and_reactions(
     github: &GitHub,
     comment: &ProgressComment,
     body: &str,
-    approve: bool,
+    should_approve: bool,
 ) -> Result<(), GateError> {
     report_if_failed(
         "progress comment update",
@@ -103,7 +98,7 @@ fn update_comment_and_reactions(
         "in-progress reaction removal",
         github.remove_comment_reaction(&comment.identifier, "eyes", BOT_LOGIN),
     )?;
-    if approve {
+    if should_approve {
         report_if_failed(
             "approval reaction",
             github.add_comment_reaction(&comment.identifier, "+1"),

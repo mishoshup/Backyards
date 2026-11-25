@@ -106,8 +106,10 @@ fn publish_all(
         pull_request: run.options.pull_request,
         head_sha: run.head_sha,
     };
+    let mut first_failure = Ok(());
     for (mode, outcome) in outcomes {
-        publish_findings(run.github, target, *mode, &outcome.accepted)?;
+        let result = publish_findings(run.github, target, *mode, &outcome.accepted);
+        first_failure = first_failure.and(result);
     }
-    Ok(())
+    first_failure
 }

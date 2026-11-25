@@ -23,8 +23,8 @@ pub fn allowed_hosts() -> Vec<&'static str> {
 }
 
 pub fn fetch_url(arguments: &FetchUrlArguments) -> Result<String, ToolError> {
-    let host = extract_allowed_host(&arguments.url)?;
-    let page = download_page(&arguments.url, &host)?;
+    extract_allowed_host(&arguments.url)?;
+    let page = download_page(&arguments.url)?;
     Ok(truncate_output(&reduce_to_text(&page)?))
 }
 
@@ -40,7 +40,7 @@ fn extract_allowed_host(url: &str) -> Result<String, ToolError> {
     }
 }
 
-fn download_page(url: &str, _host: &str) -> Result<String, ToolError> {
+fn download_page(url: &str) -> Result<String, ToolError> {
     let agent: ureq::Agent = ureq::Agent::config_builder()
         .max_redirects(0)
         .https_only(true)

@@ -26,7 +26,7 @@ impl ReviewerMode {
     }
 
     #[must_use]
-    pub const fn includes_rule_files(self) -> bool {
+    pub const fn should_include_rule_files(self) -> bool {
         match self {
             Self::Inline => true,
             Self::Holistic => false,

@@ -7,8 +7,6 @@ use crate::review::tools::error::ToolError;
 use crate::review::tools::limits::{MAXIMUM_LISTED_FILES, render_capped_lines};
 use crate::workspace::capture_command;
 
-const DOUBLE_STAR_MARKER: &str = "\u{0}";
-
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ListFilesArguments {
@@ -38,13 +36,22 @@ pub fn list_repository_paths(root: &Path) -> Result<Vec<String>, ToolError> {
 }
 
 fn compile_glob(glob: &str) -> Result<Regex, ToolError> {
-    let escaped = regex::escape(glob);
-    let translated = escaped
-        .replace(r"\*\*", DOUBLE_STAR_MARKER)
-        .replace(r"\*", "[^/]*")
-        .replace(r"\?", "[^/]")
-        .replace(DOUBLE_STAR_MARKER, ".*");
+    let translated = translate_glob(glob);
     Regex::new(&format!("^{translated}$")).map_err(|source| ToolError::InvalidPattern {
         reason: source.to_string(),
     })
+}
+
+fn translate_glob(glob: &str) -> String {
+    let mut translated = String::new();
+    let mut characters = glob.chars().peekable();
+    while let Some(character) = characters.next() {
+        match character {
+            '*' if characters.next_if_eq(&'*').is_some() => translated.push_str(".*"),
+            '*' => translated.push_str("[^/]*"),
+            '?' => translated.push_str("[^/]"),
+            other => translated.push_str(&regex::escape(&other.to_string())),
+        }
+    }
+    translated
 }

@@ -98,6 +98,7 @@ fn findings_that_fail_inline_placement_move_to_the_summary_comment() {
     assert_eq!(calls.len(), 2);
     assert!(calls[1].contains("issues/7/comments"));
     assert!(calls[1].contains("`src/a.rs:3` STYLE-1 problem at 3"));
+    assert!(calls[1].contains("1 inline placement failed"));
 }
 
 #[test]

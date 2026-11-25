@@ -37,13 +37,33 @@ fn describe_omitted(omitted: usize) -> String {
     }
 }
 
+#[derive(Debug, Default)]
+pub struct InlinePlacement {
+    pub unplaced: Vec<Violation>,
+    pub failures: Vec<String>,
+}
+
+fn describe_placement_failures(failures: &[String]) -> String {
+    let Some(first) = failures.first() else {
+        return String::new();
+    };
+    format!(
+        "\n\n{} inline placement failed. First error: {first}",
+        failures.len()
+    )
+}
+
 pub fn post_summary_comment(
     github: &GitHub,
     target: PostTarget<'_>,
     mode: ReviewerMode,
-    violations: &[Violation],
+    placement: &InlinePlacement,
 ) -> Result<(), GateError> {
-    let body_field = format!("body={}", build_summary_body(mode, violations));
+    let body_field = format!(
+        "body={}{}",
+        build_summary_body(mode, &placement.unplaced),
+        describe_placement_failures(&placement.failures)
+    );
     github
         .api(
             &format!("issues/{}/comments", target.pull_request),

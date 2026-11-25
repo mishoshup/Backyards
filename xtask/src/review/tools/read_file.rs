@@ -1,10 +1,12 @@
+use std::fs::File;
+use std::io::{BufRead, BufReader};
 use std::path::Path;
 
 use serde::Deserialize;
 
 use crate::review::tools::confinement::resolve_inside_repository;
 use crate::review::tools::error::ToolError;
-use crate::review::tools::limits::truncate_output;
+use crate::review::tools::limits::{MAXIMUM_TOOL_OUTPUT_BYTES, truncate_output};
 
 const FIRST_LINE: usize = 1;
 
@@ -21,21 +23,39 @@ pub fn read_file(root: &Path, arguments: &ReadFileArguments) -> Result<String, T
     if !resolved.is_file() {
         return Err(ToolError::NotAFile);
     }
-    let text = std::fs::read_to_string(&resolved).map_err(|source| ToolError::ReadFailed {
-        reason: source.to_string(),
-    })?;
-    Ok(truncate_output(&number_lines(&text, arguments)))
+    let file = File::open(&resolved).map_err(|source| read_failure(&source))?;
+    let numbered = number_requested_lines(BufReader::new(file), arguments)?;
+    Ok(truncate_output(&numbered))
 }
 
-fn number_lines(text: &str, arguments: &ReadFileArguments) -> String {
+fn number_requested_lines(
+    reader: impl BufRead,
+    arguments: &ReadFileArguments,
+) -> Result<String, ToolError> {
     let first = arguments.start_line.unwrap_or(FIRST_LINE);
     let last = arguments.end_line.unwrap_or(usize::MAX);
     let mut numbered = Vec::new();
-    for (index, line) in text.lines().enumerate() {
+    for (index, line) in reader.lines().enumerate() {
         let number = index + 1;
-        if (first..=last).contains(&number) {
-            numbered.push(format!("{number}\t{line}"));
+        if number > last || numbered_size(&numbered) > MAXIMUM_TOOL_OUTPUT_BYTES {
+            break;
+        }
+        if number >= first {
+            numbered.push(format!(
+                "{number}\t{}",
+                line.map_err(|source| read_failure(&source))?
+            ));
         }
     }
-    numbered.join("\n")
+    Ok(numbered.join("\n"))
+}
+
+fn numbered_size(numbered: &[String]) -> usize {
+    numbered.iter().map(String::len).sum()
+}
+
+fn read_failure(source: &std::io::Error) -> ToolError {
+    ToolError::ReadFailed {
+        reason: source.to_string(),
+    }
 }

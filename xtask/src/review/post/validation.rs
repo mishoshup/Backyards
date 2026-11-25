@@ -73,7 +73,7 @@ fn find_rule_drop_reason(
     mode: ReviewerMode,
     allowed_rules: &BTreeSet<&str>,
 ) -> Option<DropReason> {
-    if !mode.includes_rule_files() {
+    if !mode.should_include_rule_files() {
         return None;
     }
     if !allowed_rules.contains(violation.rule_identifier.as_str()) {

@@ -1,7 +1,7 @@
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
-use crate::report::{GateError, write_report_line};
+use crate::report::{GateError, pluralize, write_report_line};
 use crate::review::diff::{AddedLines, parse_added_lines, read_local_diff};
 use crate::review::model::{Confidence, Violation, extract_json_object, parse_answer};
 use crate::review::post::{ValidationOutcome, validate_violations};
@@ -162,9 +162,9 @@ fn report_outcomes(
 
 fn report_validated(mode: ReviewerMode, validated: &ValidationOutcome) -> Result<usize, GateError> {
     write_report_line(&format!(
-        "{} review: {} findings, {} dropped",
+        "{} review: {}, {} dropped",
         mode.label(),
-        validated.accepted.len(),
+        pluralize(validated.accepted.len(), "finding", "findings"),
         validated.dropped.len()
     ))?;
     for violation in &validated.accepted {

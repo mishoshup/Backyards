@@ -5,7 +5,7 @@ use crate::review::prompt::rules::{RuleFile, build_rule_checklist};
 #[must_use]
 pub fn build_system_prompt(instructions: &str, mode: ReviewerMode, rules: &[RuleFile]) -> String {
     let mut sections = vec![instructions.trim_end().to_owned()];
-    if mode.includes_rule_files() {
+    if mode.should_include_rule_files() {
         sections.push(render_rule_section(rules));
     }
     sections.push(OUTPUT_CONTRACT.to_owned());
