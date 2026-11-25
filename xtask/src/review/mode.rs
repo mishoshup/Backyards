@@ -6,6 +6,8 @@ pub enum ReviewerMode {
     Holistic,
 }
 
+pub const ALL_REVIEWER_MODES: [ReviewerMode; 2] = [ReviewerMode::Inline, ReviewerMode::Holistic];
+
 impl ReviewerMode {
     #[must_use]
     pub const fn agent_file(self) -> &'static str {

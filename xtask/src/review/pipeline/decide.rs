@@ -18,7 +18,7 @@ pub fn decide_run(
     head_sha: &str,
 ) -> Result<RunDecision, GateError> {
     let existing = github.read_status_state(head_sha, &options.status_context())?;
-    if should_skip_review(&options.event_name, existing.as_deref()) {
+    if should_skip_review(&options.event_name, existing) {
         return Ok(RunDecision::AlreadyReviewed);
     }
     let previous_runs = github.count_progress_comments(options.pull_request)?;

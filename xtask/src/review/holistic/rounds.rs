@@ -2,7 +2,7 @@ use std::io::Write;
 
 use crate::review::error::ReviewError;
 use crate::review::model::{
-    ChatMessage, ChatRequest, ModelClient, ModelReply, ReviewAnswer, parse_answer,
+    ChatMessage, ChatRequest, ModelClient, ModelReply, ReviewAnswer, Role, parse_answer,
 };
 use crate::review::tools::{ToolRunner, tool_definitions};
 
@@ -45,7 +45,7 @@ fn announce_cap_if_near(messages: &mut Vec<ChatMessage>, round: usize) {
             "This is round {round} of {MAXIMUM_ROUNDS}. Tools are disabled in the final round, so finish your checks."
         )
     };
-    messages.push(ChatMessage::new("user", notice));
+    messages.push(ChatMessage::new(Role::User, notice));
 }
 
 fn reject_tools_in_final_round(round: usize) -> Result<(), ReviewError> {

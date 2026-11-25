@@ -4,7 +4,7 @@ use crate::fake_model_server::{
     FakeModelServer, Script, content_event, finish_event, reasoning_event,
 };
 use xtask::review::{
-    ChatMessage, ChatRequest, ModelClient, ModelEndpoint, ReviewError, parse_answer,
+    ChatMessage, ChatRequest, ModelClient, ModelEndpoint, ReviewError, Role, parse_answer,
 };
 
 fn client_for(server: &FakeModelServer) -> ModelClient {
@@ -15,7 +15,7 @@ fn client_for(server: &FakeModelServer) -> ModelClient {
 }
 
 fn ask(client: &ModelClient) -> Result<xtask::review::ModelReply, ReviewError> {
-    let messages = [ChatMessage::new("user", "review".to_owned())];
+    let messages = [ChatMessage::new(Role::User, "review".to_owned())];
     let request = ChatRequest {
         messages: &messages,
         tools: None,

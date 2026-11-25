@@ -10,6 +10,7 @@ mod pipeline;
 mod post;
 mod prompt;
 mod tools;
+mod worker;
 
 pub use cli::{ReviewTask, run_review_task};
 pub use diff::{
@@ -21,10 +22,10 @@ pub use github::{
     has_reviewable_path, should_skip_review,
 };
 pub use holistic::{MAXIMUM_ROUNDS, run_holistic_review};
-pub use mode::ReviewerMode;
+pub use mode::{ALL_REVIEWER_MODES, ReviewerMode};
 pub use model::{
     ChatMessage, ChatRequest, Confidence, ModelClient, ModelEndpoint, ModelReply, ReviewAnswer,
-    ToolCall, Violation, parse_answer,
+    Role, ToolCall, Violation, parse_answer,
 };
 pub use pipeline::{CiOptions, endpoint_for, run_ci_review};
 pub use post::{

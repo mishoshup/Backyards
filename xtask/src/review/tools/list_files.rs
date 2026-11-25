@@ -4,12 +4,13 @@ use regex::Regex;
 use serde::Deserialize;
 
 use crate::review::tools::error::ToolError;
-use crate::review::tools::limits::MAXIMUM_LISTED_FILES;
+use crate::review::tools::limits::{MAXIMUM_LISTED_FILES, render_capped_lines};
 use crate::workspace::capture_command;
 
 const DOUBLE_STAR_MARKER: &str = "\u{0}";
 
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct ListFilesArguments {
     pub glob: String,
 }
@@ -20,7 +21,7 @@ pub fn list_files(root: &Path, arguments: &ListFilesArguments) -> Result<String,
         .into_iter()
         .filter(|path| pattern.is_match(path))
         .collect();
-    Ok(render_listing(&matching))
+    Ok(render_capped_lines(&matching, MAXIMUM_LISTED_FILES))
 }
 
 pub fn list_repository_paths(root: &Path) -> Result<Vec<String>, ToolError> {
@@ -46,18 +47,4 @@ fn compile_glob(glob: &str) -> Result<Regex, ToolError> {
     Regex::new(&format!("^{translated}$")).map_err(|source| ToolError::InvalidPattern {
         reason: source.to_string(),
     })
-}
-
-fn render_listing(paths: &[String]) -> String {
-    let shown = paths
-        .iter()
-        .take(MAXIMUM_LISTED_FILES)
-        .cloned()
-        .collect::<Vec<_>>()
-        .join("\n");
-    if paths.len() > MAXIMUM_LISTED_FILES {
-        format!("{shown}\n[output truncated after {MAXIMUM_LISTED_FILES} lines]")
-    } else {
-        shown
-    }
 }

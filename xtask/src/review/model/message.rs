@@ -1,10 +1,25 @@
 use serde::Serialize;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ToolCallKind {
+    Function,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Role {
+    System,
+    User,
+    Assistant,
+    Tool,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct ToolCall {
     pub id: String,
     #[serde(rename = "type")]
-    pub kind: String,
+    pub kind: ToolCallKind,
     pub function: FunctionCall,
 }
 
@@ -16,7 +31,7 @@ pub struct FunctionCall {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct ChatMessage {
-    pub role: String,
+    pub role: Role,
     pub content: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub reasoning_content: Option<String>,
@@ -28,9 +43,9 @@ pub struct ChatMessage {
 
 impl ChatMessage {
     #[must_use]
-    pub fn new(role: &str, content: String) -> Self {
+    pub const fn new(role: Role, content: String) -> Self {
         Self {
-            role: role.to_owned(),
+            role,
             content,
             reasoning_content: None,
             tool_calls: None,
@@ -43,7 +58,7 @@ impl ChatMessage {
         Self {
             reasoning_content: Some(reasoning),
             tool_calls: Some(calls),
-            ..Self::new("assistant", content)
+            ..Self::new(Role::Assistant, content)
         }
     }
 
@@ -51,7 +66,7 @@ impl ChatMessage {
     pub fn tool_result(call_identifier: String, content: String) -> Self {
         Self {
             tool_call_id: Some(call_identifier),
-            ..Self::new("tool", content)
+            ..Self::new(Role::Tool, content)
         }
     }
 }

@@ -20,3 +20,17 @@ pub fn truncate_output(text: &str) -> String {
         &text[..end]
     )
 }
+
+pub fn render_capped_lines(lines: &[String], maximum: usize) -> String {
+    let shown = lines
+        .iter()
+        .take(maximum)
+        .map(String::as_str)
+        .collect::<Vec<_>>()
+        .join("\n");
+    if lines.len() > maximum {
+        format!("{shown}\n[output truncated after {maximum} lines]")
+    } else {
+        shown
+    }
+}

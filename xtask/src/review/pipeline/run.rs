@@ -1,6 +1,7 @@
 use crate::report::{GateError, write_report_line};
 use crate::review::ReviewerMode;
 use crate::review::github::{FORCE_PHRASE, GitHub, MAXIMUM_RUNS, ProgressComment, StatusState};
+use crate::review::pipeline::deadline::with_deadline;
 use crate::review::pipeline::decide::{RunDecision, decide_run};
 use crate::review::pipeline::finish::{
     ReviewSummary, finish_failure, finish_success, record_status, summarize,
@@ -65,7 +66,7 @@ fn run_reviewed(
         head_sha,
     };
     let comment = start_progress(run)?;
-    match review_and_publish(repository, run) {
+    match with_deadline(run, &comment, || review_and_publish(repository, run)) {
         Ok(summaries) => {
             finish_success(run, &comment, &summaries);
             Ok(())

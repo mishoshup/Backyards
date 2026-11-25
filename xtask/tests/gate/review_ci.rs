@@ -115,7 +115,7 @@ fn run_ci(scripts: Vec<Script>) -> CiRun {
     let server = FakeModelServer::start(scripts);
     let output = launch_review(&fixture, &tools, &server);
     let calls = read_calls(&tools.join("calls.log"));
-    std::fs::remove_dir_all(&tools).ok();
+    std::fs::remove_dir_all(&tools).unwrap();
     CiRun { output, calls }
 }
 

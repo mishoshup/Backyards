@@ -7,11 +7,12 @@ use crate::review::error::ReviewError;
 use crate::review::model::endpoint::{
     CONNECT_TIMEOUT, ModelEndpoint, PROGRESS_INTERVAL, TOTAL_TIMEOUT,
 };
-use crate::review::model::message::{ChatMessage, FunctionCall, ToolCall};
+use crate::review::model::message::{ChatMessage, FunctionCall, ToolCall, ToolCallKind};
 use crate::review::model::retry::run_with_retry;
-use crate::review::model::stream::{StreamEvent, ToolCallFragment, parse_stream_line};
+use crate::review::model::stream::{
+    FinishReason, StreamEvent, ToolCallFragment, parse_stream_line,
+};
 
-const FUNCTION_KIND: &str = "function";
 const EMPTY_ARGUMENTS: &str = "{}";
 
 #[derive(Debug, Clone, Copy)]
@@ -131,7 +132,7 @@ struct StreamState {
     reasoning: String,
     reasoning_chunks: usize,
     tool_calls: Vec<ToolCall>,
-    finish_reason: Option<String>,
+    finish_reason: Option<FinishReason>,
     started: Instant,
     last_report: Instant,
 }
@@ -154,7 +155,7 @@ impl StreamState {
         match event {
             StreamEvent::Content(text) => self.content.push_str(&text),
             StreamEvent::Reasoning(text) => self.record_reasoning(&text),
-            StreamEvent::ToolCall(fragment) => self.merge_tool_call(fragment),
+            StreamEvent::ToolCalls(fragments) => self.merge_tool_calls(fragments),
             StreamEvent::Finished(reason) => self.finish_reason = Some(reason),
             StreamEvent::Done => return true,
             StreamEvent::Ignored => {}
@@ -165,6 +166,12 @@ impl StreamState {
     fn record_reasoning(&mut self, text: &str) {
         self.reasoning.push_str(text);
         self.reasoning_chunks += 1;
+    }
+
+    fn merge_tool_calls(&mut self, fragments: Vec<ToolCallFragment>) {
+        for fragment in fragments {
+            self.merge_tool_call(fragment);
+        }
     }
 
     fn merge_tool_call(&mut self, fragment: ToolCallFragment) {
@@ -183,9 +190,9 @@ impl StreamState {
         }
     }
 
-    fn report_if_due(&mut self, progress: &mut dyn Write) {
+    fn report_if_due(&mut self, progress: &mut dyn Write) -> Result<(), ReviewError> {
         if self.last_report.elapsed() < PROGRESS_INTERVAL {
-            return;
+            return Ok(());
         }
         self.last_report = Instant::now();
         writeln!(
@@ -195,17 +202,16 @@ impl StreamState {
             self.reasoning_chunks,
             self.content.len()
         )
-        .ok();
+        .map_err(|source| ReviewError::ProgressWrite {
+            reason: source.to_string(),
+        })
     }
 
     fn into_reply(mut self) -> Result<ModelReply, ReviewError> {
-        match self.finish_reason.as_deref() {
-            Some("stop" | "tool_calls") | None => {}
-            Some(other) => {
-                return Err(ReviewError::ModelTruncated {
-                    finish_reason: other.to_owned(),
-                });
-            }
+        if let Some(FinishReason::Other(other)) = self.finish_reason {
+            return Err(ReviewError::ModelTruncated {
+                finish_reason: other,
+            });
         }
         for call in &mut self.tool_calls {
             if call.function.arguments.trim().is_empty() {
@@ -221,10 +227,10 @@ impl StreamState {
     }
 }
 
-fn empty_tool_call() -> ToolCall {
+const fn empty_tool_call() -> ToolCall {
     ToolCall {
         id: String::new(),
-        kind: FUNCTION_KIND.to_owned(),
+        kind: ToolCallKind::Function,
         function: FunctionCall {
             name: String::new(),
             arguments: String::new(),
@@ -242,7 +248,7 @@ fn collect_reply(
         if state.apply(parse_stream_line(&line)?) {
             break;
         }
-        state.report_if_due(progress);
+        state.report_if_due(progress)?;
     }
     state.into_reply()
 }

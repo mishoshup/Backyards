@@ -20,6 +20,10 @@ pub enum ReviewError {
     ModelConnection { reason: String },
     #[error("model returned HTTP {status}")]
     ModelStatus { status: u16 },
+    #[error("commit status has an unknown state {value}")]
+    UnknownStatusState { value: String },
+    #[error("progress report could not be written: {reason}")]
+    ProgressWrite { reason: String },
     #[error("model stream ended with finish reason {finish_reason}")]
     ModelTruncated { finish_reason: String },
     #[error("model returned an empty answer")]
@@ -48,6 +52,8 @@ impl ReviewError {
             | Self::EmptyAnswer
             | Self::InvalidAnswer { .. }
             | Self::MalformedStreamEvent { .. }
+            | Self::ProgressWrite { .. }
+            | Self::UnknownStatusState { .. }
             | Self::MissingEnvironment { .. } => false,
         }
     }

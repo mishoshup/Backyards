@@ -97,11 +97,17 @@ fn parse_rule_file(path: &Path, content: String) -> Result<RuleFile, ReviewError
 }
 
 fn read_rule_identifier(content: &str) -> Option<&str> {
-    content
-        .lines()
-        .find_map(|line| line.strip_prefix(RULE_IDENTIFIER_KEY))
-        .map(str::trim)
-        .filter(|identifier| is_valid_rule_identifier(identifier))
+    let identifier = find_identifier_line(content)?;
+    is_valid_rule_identifier(identifier).then_some(identifier)
+}
+
+fn find_identifier_line(content: &str) -> Option<&str> {
+    for line in content.lines() {
+        if let Some(value) = line.strip_prefix(RULE_IDENTIFIER_KEY) {
+            return Some(value.trim());
+        }
+    }
+    None
 }
 
 fn read_heading(content: &str) -> Option<&str> {

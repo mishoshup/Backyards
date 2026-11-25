@@ -1,4 +1,5 @@
 use crate::report::GateError;
+use crate::review::ReviewError;
 use crate::review::github::client::GitHub;
 
 const MAXIMUM_DESCRIPTION_CHARACTERS: usize = 140;
@@ -11,6 +12,16 @@ pub enum StatusState {
 }
 
 impl StatusState {
+    #[must_use]
+    pub fn from_label(label: &str) -> Option<Self> {
+        match label {
+            "pending" => Some(Self::Pending),
+            "success" => Some(Self::Success),
+            "failure" => Some(Self::Failure),
+            _ => None,
+        }
+    }
+
     #[must_use]
     pub const fn label(self) -> &'static str {
         match self {
@@ -61,7 +72,7 @@ impl GitHub {
         &self,
         head_sha: &str,
         context: &str,
-    ) -> Result<Option<String>, GateError> {
+    ) -> Result<Option<StatusState>, GateError> {
         let filter =
             format!("[.statuses[] | select(.context == \"{context}\") | .state] | first // empty");
         let output = self.api(
@@ -69,7 +80,15 @@ impl GitHub {
             &["--paginate", "--jq", &filter],
         )?;
         let state = output.trim();
-        Ok((!state.is_empty()).then(|| state.to_owned()))
+        if state.is_empty() {
+            return Ok(None);
+        }
+        StatusState::from_label(state).map(Some).ok_or_else(|| {
+            ReviewError::UnknownStatusState {
+                value: state.to_owned(),
+            }
+            .into()
+        })
     }
 }
 

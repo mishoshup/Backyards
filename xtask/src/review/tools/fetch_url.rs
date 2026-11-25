@@ -8,6 +8,7 @@ const ALLOWED_HOSTS_TEXT: &str = include_str!("allowed_fetch_hosts.txt");
 const HTTPS_PREFIX: &str = "https://";
 
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct FetchUrlArguments {
     pub url: String,
 }
@@ -29,10 +30,7 @@ pub fn fetch_url(arguments: &FetchUrlArguments) -> Result<String, ToolError> {
 
 fn extract_allowed_host(url: &str) -> Result<String, ToolError> {
     let remainder = url.strip_prefix(HTTPS_PREFIX).ok_or(ToolError::OnlyHttps)?;
-    let host = remainder
-        .split(['/', ':', '?', '#'])
-        .next()
-        .unwrap_or_default();
+    let host = remainder.split(['/', '?', '#']).next().unwrap_or_default();
     if allowed_hosts().contains(&host) {
         Ok(host.to_owned())
     } else {

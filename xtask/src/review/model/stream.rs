@@ -6,12 +6,29 @@ const DATA_PREFIX: &str = "data:";
 const DONE_MARKER: &str = "[DONE]";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub enum FinishReason {
+    Stop,
+    ToolCalls,
+    Other(String),
+}
+
+impl FinishReason {
+    fn from_label(label: String) -> Self {
+        match label.as_str() {
+            "stop" => Self::Stop,
+            "tool_calls" => Self::ToolCalls,
+            _ => Self::Other(label),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StreamEvent {
     Ignored,
     Reasoning(String),
-    ToolCall(ToolCallFragment),
+    ToolCalls(Vec<ToolCallFragment>),
     Content(String),
-    Finished(String),
+    Finished(FinishReason),
     Done,
 }
 
@@ -76,14 +93,14 @@ fn interpret_chunk(chunk: Chunk) -> StreamEvent {
         return StreamEvent::Ignored;
     };
     if let Some(reason) = choice.finish_reason {
-        return StreamEvent::Finished(reason);
+        return StreamEvent::Finished(FinishReason::from_label(reason));
     }
     interpret_delta(choice.delta)
 }
 
 fn interpret_delta(delta: Delta) -> StreamEvent {
-    if let Some(chunk) = delta.tool_calls.and_then(|calls| calls.into_iter().next()) {
-        return StreamEvent::ToolCall(to_fragment(chunk));
+    if let Some(calls) = delta.tool_calls {
+        return StreamEvent::ToolCalls(calls.into_iter().map(to_fragment).collect());
     }
     match (delta.content, delta.reasoning_content) {
         (Some(content), _) if !content.is_empty() => StreamEvent::Content(content),

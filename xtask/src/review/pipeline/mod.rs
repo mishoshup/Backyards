@@ -1,3 +1,4 @@
+mod deadline;
 mod decide;
 mod endpoint;
 mod finish;

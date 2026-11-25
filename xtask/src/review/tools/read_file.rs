@@ -9,6 +9,7 @@ use crate::review::tools::limits::truncate_output;
 const FIRST_LINE: usize = 1;
 
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct ReadFileArguments {
     pub path: String,
     pub start_line: Option<usize>,
@@ -29,11 +30,12 @@ pub fn read_file(root: &Path, arguments: &ReadFileArguments) -> Result<String, T
 fn number_lines(text: &str, arguments: &ReadFileArguments) -> String {
     let first = arguments.start_line.unwrap_or(FIRST_LINE);
     let last = arguments.end_line.unwrap_or(usize::MAX);
-    text.lines()
-        .enumerate()
-        .map(|(index, line)| (index + 1, line))
-        .filter(|(number, _)| (first..=last).contains(number))
-        .map(|(number, line)| format!("{number}\t{line}"))
-        .collect::<Vec<_>>()
-        .join("\n")
+    let mut numbered = Vec::new();
+    for (index, line) in text.lines().enumerate() {
+        let number = index + 1;
+        if (first..=last).contains(&number) {
+            numbered.push(format!("{number}\t{line}"));
+        }
+    }
+    numbered.join("\n")
 }

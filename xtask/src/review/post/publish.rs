@@ -31,9 +31,11 @@ fn post_each_inline(
     target: PostTarget<'_>,
     violations: &[Violation],
 ) -> Vec<Violation> {
-    violations
-        .iter()
-        .filter(|violation| post_inline_comment(github, target, violation).is_err())
-        .cloned()
-        .collect()
+    let mut unplaced = Vec::new();
+    for violation in violations {
+        if post_inline_comment(github, target, violation).is_err() {
+            unplaced.push(violation.clone());
+        }
+    }
+    unplaced
 }

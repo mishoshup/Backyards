@@ -2,7 +2,9 @@ use std::collections::BTreeSet;
 
 use crate::report::GateError;
 use crate::review::diff::{AddedLines, parse_added_lines};
-use crate::review::model::{ChatMessage, ChatRequest, ModelClient, ReviewAnswer, parse_answer};
+use crate::review::model::{
+    ChatMessage, ChatRequest, ModelClient, ReviewAnswer, Role, parse_answer,
+};
 use crate::review::pipeline::endpoint::endpoint_for;
 use crate::review::post::{ValidationOutcome, validate_violations};
 use crate::review::prompt::{
@@ -10,10 +12,9 @@ use crate::review::prompt::{
     load_reviewer_instructions, load_rule_files,
 };
 use crate::review::tools::ToolRunner;
-use crate::review::{ReviewError, ReviewerMode, run_holistic_review};
+use crate::review::worker::join_worker;
+use crate::review::{ALL_REVIEWER_MODES, ReviewerMode, run_holistic_review};
 use crate::workspace::Repository;
-
-const REVIEWER_MODES: [ReviewerMode; 2] = [ReviewerMode::Inline, ReviewerMode::Holistic];
 
 pub struct ReviewContext<'context> {
     pub repository: &'context Repository,
@@ -40,26 +41,15 @@ pub fn run_both_reviewers(
     context: &ReviewContext<'_>,
 ) -> Result<Vec<(ReviewerMode, ValidationOutcome)>, GateError> {
     std::thread::scope(|scope| {
-        let workers: Vec<_> = REVIEWER_MODES
+        let workers: Vec<_> = ALL_REVIEWER_MODES
             .iter()
             .map(|mode| scope.spawn(|| run_one_reviewer(context, *mode)))
             .collect();
-        REVIEWER_MODES
+        ALL_REVIEWER_MODES
             .iter()
             .zip(workers)
             .map(|(mode, worker)| join_worker(worker).map(|outcome| (*mode, outcome)))
             .collect()
-    })
-}
-
-fn join_worker(
-    worker: std::thread::ScopedJoinHandle<'_, Result<ValidationOutcome, GateError>>,
-) -> Result<ValidationOutcome, GateError> {
-    worker.join().unwrap_or_else(|_| {
-        Err(ReviewError::InvalidAnswer {
-            reason: "reviewer thread panicked".to_owned(),
-        }
-        .into())
     })
 }
 
@@ -111,7 +101,7 @@ fn build_messages(
     let system = build_system_prompt(&instructions, mode, &context.rules);
     let user = build_user_prompt(mode, &context.diff);
     Ok(vec![
-        ChatMessage::new("system", system),
-        ChatMessage::new("user", user),
+        ChatMessage::new(Role::System, system),
+        ChatMessage::new(Role::User, user),
     ])
 }

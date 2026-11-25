@@ -5,7 +5,7 @@ use crate::fake_model_server::{
 };
 use crate::fixture::Fixture;
 use xtask::review::{
-    ChatMessage, MAXIMUM_ROUNDS, ModelClient, ModelEndpoint, ReviewError, ToolRunner,
+    ChatMessage, MAXIMUM_ROUNDS, ModelClient, ModelEndpoint, ReviewError, Role, ToolRunner,
     run_holistic_review,
 };
 
@@ -36,7 +36,7 @@ fn run(
     server: &FakeModelServer,
     fixture: &Fixture,
 ) -> Result<xtask::review::ReviewAnswer, ReviewError> {
-    let messages = vec![ChatMessage::new("user", "review".to_owned())];
+    let messages = vec![ChatMessage::new(Role::User, "review".to_owned())];
     run_holistic_review(
         &client_for(server),
         ToolRunner::new(fixture.path()),

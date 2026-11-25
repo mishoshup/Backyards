@@ -9,10 +9,10 @@ use crate::review::prompt::{
     allowed_rule_identifiers, build_system_prompt, build_user_prompt, load_reviewer_instructions,
     load_rule_files,
 };
-use crate::review::{ReviewError, ReviewerMode};
+use crate::review::worker::join_worker;
+use crate::review::{ALL_REVIEWER_MODES, ReviewError, ReviewerMode};
 use crate::workspace::{Repository, capture_command};
 
-const LOCAL_MODES: [ReviewerMode; 2] = [ReviewerMode::Inline, ReviewerMode::Holistic];
 const ATTACHMENT_REQUEST: &str = "Follow the instructions in the attached file.";
 
 #[derive(Debug, Clone)]
@@ -49,26 +49,15 @@ fn run_both_reviewers(
     context: &LocalContext,
 ) -> Vec<(ReviewerMode, Result<ValidationOutcome, GateError>)> {
     std::thread::scope(|scope| {
-        let workers: Vec<_> = LOCAL_MODES
+        let workers: Vec<_> = ALL_REVIEWER_MODES
             .iter()
             .map(|mode| scope.spawn(|| run_one_reviewer(repository, options, context, *mode)))
             .collect();
-        LOCAL_MODES
+        ALL_REVIEWER_MODES
             .iter()
             .zip(workers)
             .map(|(mode, worker)| (*mode, join_worker(worker)))
             .collect()
-    })
-}
-
-fn join_worker(
-    worker: std::thread::ScopedJoinHandle<'_, Result<ValidationOutcome, GateError>>,
-) -> Result<ValidationOutcome, GateError> {
-    worker.join().unwrap_or_else(|_| {
-        Err(ReviewError::InvalidAnswer {
-            reason: "reviewer thread panicked".to_owned(),
-        }
-        .into())
     })
 }
 
@@ -83,7 +72,7 @@ fn run_one_reviewer(
     let user = build_user_prompt(mode, &context.diff);
     let prompt_path = write_prompt_file(mode, &format!("{system}\n\n{user}"))?;
     let output = run_opencode(repository, options, &prompt_path);
-    remove_prompt_file(&prompt_path);
+    remove_prompt_file(&prompt_path)?;
     let answer = parse_opencode_answer(&output?)?;
     let allowed = allowed_rule_identifiers(&context.rules);
     Ok(validate_violations(
@@ -107,8 +96,11 @@ fn write_prompt_file(mode: ReviewerMode, prompt: &str) -> Result<PathBuf, GateEr
     Ok(path)
 }
 
-fn remove_prompt_file(path: &Path) {
-    std::fs::remove_file(path).ok();
+fn remove_prompt_file(path: &Path) -> Result<(), GateError> {
+    std::fs::remove_file(path).map_err(|source| GateError::ReadFile {
+        path: path.to_path_buf(),
+        source,
+    })
 }
 
 fn run_opencode(

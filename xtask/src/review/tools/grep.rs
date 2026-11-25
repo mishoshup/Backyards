@@ -6,16 +6,23 @@ use serde::Deserialize;
 use crate::review::tools::confinement::resolve_inside_repository;
 use crate::review::tools::error::ToolError;
 use crate::review::tools::limits::{
-    MAXIMUM_GREP_MATCHES, MAXIMUM_SEARCHED_FILE_BYTES, truncate_output,
+    MAXIMUM_GREP_MATCHES, MAXIMUM_SEARCHED_FILE_BYTES, render_capped_lines, truncate_output,
 };
 use crate::review::tools::list_files::list_repository_paths;
 
 const DEFAULT_SEARCH_PATH: &str = ".";
 
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct GrepArguments {
     pub pattern: String,
     pub path: Option<String>,
+}
+
+#[derive(Default)]
+struct SearchResult {
+    matches: Vec<String>,
+    skipped: Vec<String>,
 }
 
 pub fn grep(root: &Path, arguments: &GrepArguments) -> Result<String, ToolError> {
@@ -25,58 +32,61 @@ pub fn grep(root: &Path, arguments: &GrepArguments) -> Result<String, ToolError>
     let scope = arguments.path.as_deref().unwrap_or(DEFAULT_SEARCH_PATH);
     let scope_root = resolve_inside_repository(root, scope)?;
     let canonical_root = resolve_inside_repository(root, DEFAULT_SEARCH_PATH)?;
-    let matches = search_files(&canonical_root, &scope_root, &pattern)?;
-    Ok(truncate_output(&render_matches(&matches)))
+    let result = search_files(&canonical_root, &scope_root, &pattern)?;
+    Ok(truncate_output(&render_result(&result)))
 }
 
 fn search_files(
     canonical_root: &Path,
     scope_root: &Path,
     pattern: &Regex,
-) -> Result<Vec<String>, ToolError> {
-    let mut matches = Vec::new();
+) -> Result<SearchResult, ToolError> {
+    let mut result = SearchResult::default();
     for relative in list_repository_paths(canonical_root)? {
         let path = canonical_root.join(&relative);
         if path.starts_with(scope_root) {
-            collect_file_matches(&relative, &path, pattern, &mut matches);
+            collect_file_matches(&relative, &path, pattern, &mut result);
         }
-        if matches.len() > MAXIMUM_GREP_MATCHES {
+        if result.matches.len() > MAXIMUM_GREP_MATCHES {
             break;
         }
     }
-    Ok(matches)
+    Ok(result)
 }
 
-fn collect_file_matches(relative: &str, path: &Path, pattern: &Regex, matches: &mut Vec<String>) {
-    let Some(text) = read_searchable_text(path) else {
-        return;
-    };
-    matches.extend(
-        text.lines()
-            .enumerate()
-            .filter(|(_, line)| pattern.is_match(line))
-            .map(|(index, line)| format!("{relative}:{}:{line}", index + 1)),
-    );
+fn collect_file_matches(relative: &str, path: &Path, pattern: &Regex, result: &mut SearchResult) {
+    match read_searchable_text(path) {
+        Ok(text) => result
+            .matches
+            .extend(find_matching_lines(relative, &text, pattern)),
+        Err(reason) => result.skipped.push(format!("{relative}: {reason}")),
+    }
 }
 
-fn read_searchable_text(path: &Path) -> Option<String> {
-    let metadata = std::fs::metadata(path).ok()?;
+fn find_matching_lines(relative: &str, text: &str, pattern: &Regex) -> Vec<String> {
+    let mut found = Vec::new();
+    for (index, line) in text.lines().enumerate() {
+        if pattern.is_match(line) {
+            found.push(format!("{relative}:{}:{line}", index + 1));
+        }
+    }
+    found
+}
+
+fn read_searchable_text(path: &Path) -> Result<String, String> {
+    let metadata = std::fs::metadata(path).map_err(|source| format!("unreadable: {source}"))?;
     if !metadata.is_file() || metadata.len() > MAXIMUM_SEARCHED_FILE_BYTES {
-        return None;
+        return Err(format!(
+            "not searched, not a regular file or larger than {MAXIMUM_SEARCHED_FILE_BYTES} bytes"
+        ));
     }
-    std::fs::read_to_string(path).ok()
+    std::fs::read_to_string(path).map_err(|source| format!("not readable as text: {source}"))
 }
 
-fn render_matches(matches: &[String]) -> String {
-    let shown = matches
-        .iter()
-        .take(MAXIMUM_GREP_MATCHES)
-        .cloned()
-        .collect::<Vec<_>>()
-        .join("\n");
-    if matches.len() > MAXIMUM_GREP_MATCHES {
-        format!("{shown}\n[output truncated after {MAXIMUM_GREP_MATCHES} lines]")
-    } else {
-        shown
+fn render_result(result: &SearchResult) -> String {
+    let matches = render_capped_lines(&result.matches, MAXIMUM_GREP_MATCHES);
+    if result.skipped.is_empty() {
+        return matches;
     }
+    format!("{matches}\n[skipped files]\n{}", result.skipped.join("\n"))
 }

@@ -96,6 +96,32 @@ fn fetch_url_refuses_plain_http_and_unlisted_hosts() {
         r#"{"url":"https://docs.rs.evil.test/x"}"#,
     );
     assert!(lookalike.contains("not an allowed"), "{lookalike}");
+    let userinfo = run(
+        &fixture,
+        "fetch_url",
+        r#"{"url":"https://docs.rs:443@attacker.example/x"}"#,
+    );
+    assert!(userinfo.contains("not an allowed"), "{userinfo}");
+}
+
+#[test]
+fn grep_names_files_it_could_not_search() {
+    let fixture = fixture_with_sources();
+    fixture.write("data/binary.dat", "\u{0}");
+    std::fs::write(fixture.path().join("data/invalid.txt"), [0xff_u8, 0xfe]).unwrap();
+    let output = run(&fixture, "grep", r#"{"pattern":"fn two"}"#);
+    assert!(output.contains("[skipped files]"), "{output}");
+    assert!(
+        output.contains("data/invalid.txt: not readable as text"),
+        "{output}"
+    );
+}
+
+#[test]
+fn tool_arguments_reject_unknown_keys() {
+    let fixture = fixture_with_sources();
+    let output = run(&fixture, "read_file", r#"{"path":"src/lib.rs","lines":3}"#);
+    assert!(output.contains("invalid arguments"), "{output}");
 }
 
 #[test]

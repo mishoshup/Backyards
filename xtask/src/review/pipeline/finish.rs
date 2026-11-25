@@ -48,8 +48,8 @@ pub fn finish_success(run: ReviewRun<'_>, comment: &ProgressComment, summaries: 
         ProgressComment::short_sha(run.head_sha),
         lines.join("\n- ")
     );
-    let clean = summaries.iter().all(|summary| summary.accepted == 0);
-    update_comment_and_reactions(run.github, comment, &body, clean);
+    let is_clean = summaries.iter().all(|summary| summary.accepted == 0);
+    update_comment_and_reactions(run.github, comment, &body, is_clean);
     record_status(
         run,
         StatusState::Success,
