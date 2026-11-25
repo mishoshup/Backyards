@@ -79,7 +79,7 @@ impl GitHub {
             &format!("commits/{head_sha}/status"),
             &["--paginate", "--jq", &filter],
         )?;
-        let state = output.trim();
+        let state = output.lines().next().unwrap_or_default().trim();
         if state.is_empty() {
             return Ok(None);
         }

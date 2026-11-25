@@ -26,13 +26,23 @@ pub fn list_repository_paths(root: &Path) -> Result<Vec<String>, ToolError> {
     let listing = capture_command(
         root,
         "git",
-        &["ls-files", "--cached", "--others", "--exclude-standard"],
+        &[
+            "ls-files",
+            "--cached",
+            "--others",
+            "--exclude-standard",
+            "-z",
+        ],
         &[0],
     )
     .map_err(|error| ToolError::ListingFailed {
         reason: error.to_string(),
     })?;
-    Ok(listing.lines().map(str::to_owned).collect())
+    Ok(listing
+        .split('\0')
+        .filter(|path| !path.is_empty())
+        .map(str::to_owned)
+        .collect())
 }
 
 fn compile_glob(glob: &str) -> Result<Regex, ToolError> {

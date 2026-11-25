@@ -32,11 +32,12 @@ impl PromptFile {
     }
 
     pub fn remove(mut self) -> Result<(), GateError> {
-        self.is_removed = true;
         std::fs::remove_file(&self.path).map_err(|source| GateError::RemoveFile {
             path: self.path.clone(),
             source,
-        })
+        })?;
+        self.is_removed = true;
+        Ok(())
     }
 }
 

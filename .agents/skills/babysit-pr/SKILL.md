@@ -11,7 +11,7 @@ The loop spends the local run first and the CI review at most twice. It ends wit
 
 1. The owner asks for the pull request to be babysat.
 2. Develop on a branch named `<type>/<short-description>` created from an up-to-date `main`. Run `cargo xtask check --keep-going` and `cargo xtask review local` after each change, fix every finding that holds against the source, and repeat until both are clean and the result is trusted. The local run is the main check, because each CI review spends the owner's review credits.
-3. When confident, make the last commit and push with `git push origin HEAD:refs/heads/<branch>`, then open the pull request or mark it ready for review. This starts CI review run 1. Commit subjects use `<type>(<scope>): <subject>`, at most 72 characters, no trailers.
+3. When confident, make the last commit and push with `git push origin HEAD:refs/heads/<branch>`, then open the pull request or mark it ready for review. This starts CI review run 1. On an open, non-draft pull request a push starts no review: toggle draft (`gh pr ready <number> --undo`, then `gh pr ready <number>`) or comment `/agent-review`; the comment form runs the default-branch workflow. Commit subjects use `<type>(<scope>): <subject>`, at most 72 characters, no trailers.
 4. Read the result. If the agent review status is `success` with no finding that holds, report to the owner and ask whether to merge. If findings hold, fix them with the local loop from step 2, push, and request run 2 with a comment that contains `/agent-review`.
 5. CI review runs at most twice per pull request. The code refuses a third run unless the comment contains `/agent-review force`, which only the owner authorizes. After run 2, report the final state to the owner and stop.
 

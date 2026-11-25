@@ -18,7 +18,7 @@ pub struct FakeModelServer {
 impl FakeModelServer {
     pub fn start(scripts: Vec<Script>) -> Self {
         let listener = TcpListener::bind("127.0.0.1:0").unwrap();
-        let url = format!("http://{}/chat/completions", listener.local_addr().unwrap());
+        let url = format!("http://{}", listener.local_addr().unwrap());
         let requests = Arc::new(Mutex::new(Vec::new()));
         let recorded = Arc::clone(&requests);
         let handle = std::thread::spawn(move || serve_all(&listener, scripts, &recorded));
@@ -76,6 +76,11 @@ fn drain_request(stream: &mut TcpStream) -> String {
         received.extend_from_slice(&buffer[..read]);
         if request_is_complete(&received) {
             let text = String::from_utf8_lossy(&received).into_owned();
+            assert!(
+                text.starts_with("POST /chat/completions "),
+                "unexpected request line: {}",
+                text.lines().next().unwrap_or_default()
+            );
             return text
                 .split_once("\r\n\r\n")
                 .map_or_else(String::new, |(_, body)| body.to_owned());

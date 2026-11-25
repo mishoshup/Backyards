@@ -43,8 +43,7 @@ fn run_one_reviewer(
     let prompt_file = PromptFile::create(mode, &format!("{}\n\n{}", prompts.system, prompts.user))?;
     let output = run_opencode(repository, options, mode, prompt_file.path());
     let removal = prompt_file.remove();
-    let output = output?;
-    removal?;
+    let output = report_removal_before_failure(output, removal)?;
     let answer = parse_opencode_answer(&output)?;
     Ok(validate_answer(
         answer,
@@ -52,6 +51,21 @@ fn run_one_reviewer(
         &context.added,
         &context.rules,
     ))
+}
+
+fn report_removal_before_failure(
+    output: Result<String, GateError>,
+    removal: Result<(), GateError>,
+) -> Result<String, GateError> {
+    match (output, removal) {
+        (Ok(text), Ok(())) => Ok(text),
+        (Ok(_), Err(removal_failure)) => Err(removal_failure),
+        (Err(run_failure), Ok(())) => Err(run_failure),
+        (Err(run_failure), Err(removal_failure)) => {
+            write_report_line(&removal_failure.to_string())?;
+            Err(run_failure)
+        }
+    }
 }
 
 fn run_opencode(

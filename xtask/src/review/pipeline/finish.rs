@@ -33,7 +33,14 @@ fn describe_dropped_findings(dropped: &[DroppedFinding]) -> Vec<String> {
         .collect();
     let omitted = dropped.len().saturating_sub(MAXIMUM_LISTED_DROPPED);
     if omitted > 0 {
-        details.push(format!("  - {omitted} further dropped findings not listed"));
+        details.push(format!(
+            "  - {} not listed",
+            pluralize(
+                omitted,
+                "further dropped finding",
+                "further dropped findings"
+            )
+        ));
     }
     details
 }
@@ -70,7 +77,9 @@ pub fn finish_success(
         ProgressComment::short_sha(run.head_sha),
         lines.join("\n- ")
     );
-    let is_clean = summaries.iter().all(|summary| summary.accepted == 0);
+    let is_clean = summaries
+        .iter()
+        .all(|summary| summary.accepted == 0 && summary.dropped == 0);
     update_comment_and_reactions(run.github, comment, &body, is_clean)?;
     record_status(
         run,

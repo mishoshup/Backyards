@@ -10,7 +10,11 @@ use xtask::review::{
 };
 
 fn client_for(server: &FakeModelServer) -> ModelClient {
-    let mut endpoint = ModelEndpoint::new(server.url.clone(), "key".to_owned(), "model".to_owned());
+    let mut endpoint = ModelEndpoint::new(
+        format!("{}/chat/completions", server.url),
+        "key".to_owned(),
+        "model".to_owned(),
+    );
     endpoint.retry_delay = Duration::from_millis(10);
     ModelClient::new(endpoint)
 }
