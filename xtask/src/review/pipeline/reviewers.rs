@@ -5,9 +5,7 @@ use crate::review::model::{
 };
 use crate::review::pipeline::endpoint::endpoint_for;
 use crate::review::post::{ValidationOutcome, validate_answer};
-use crate::review::prompt::{
-    RuleFile, build_system_prompt, build_user_prompt, load_reviewer_instructions, load_rule_files,
-};
+use crate::review::prompt::{RuleFile, build_review_prompts, load_rule_files};
 use crate::review::tools::ToolRunner;
 use crate::review::worker::run_each_reviewer_mode;
 use crate::review::{ReviewerMode, run_holistic_review};
@@ -83,11 +81,9 @@ fn build_messages(
     context: &ReviewContext<'_>,
     mode: ReviewerMode,
 ) -> Result<Vec<ChatMessage>, GateError> {
-    let instructions = load_reviewer_instructions(context.repository, mode)?;
-    let system = build_system_prompt(&instructions, mode, &context.rules);
-    let user = build_user_prompt(mode, &context.diff);
+    let prompts = build_review_prompts(context.repository, mode, &context.rules, &context.diff)?;
     Ok(vec![
-        ChatMessage::new(Role::System, system),
-        ChatMessage::new(Role::User, user),
+        ChatMessage::new(Role::System, prompts.system),
+        ChatMessage::new(Role::User, prompts.user),
     ])
 }

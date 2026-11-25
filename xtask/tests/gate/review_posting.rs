@@ -2,7 +2,7 @@ use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 
 use xtask::review::{
-    Confidence, GitHub, PostTarget, ReviewerMode, RunPermission, StatusState, Violation,
+    Confidence, EventName, GitHub, PostTarget, ReviewerMode, RunPermission, StatusState, Violation,
     build_footer, build_summary_body, decide_run_permission, has_reviewable_path, publish_findings,
     should_skip_review,
 };
@@ -213,18 +213,18 @@ fn third_run_is_refused_unless_forced() {
 #[test]
 fn reviewed_commit_is_skipped_except_for_an_explicit_comment() {
     assert!(should_skip_review(
-        "pull_request",
+        EventName::PullRequest,
         Some(StatusState::Success)
     ));
     assert!(!should_skip_review(
-        "issue_comment",
+        EventName::IssueComment,
         Some(StatusState::Success)
     ));
     assert!(!should_skip_review(
-        "pull_request",
+        EventName::PullRequest,
         Some(StatusState::Failure)
     ));
-    assert!(!should_skip_review("pull_request", None));
+    assert!(!should_skip_review(EventName::PullRequest, None));
 }
 
 #[test]

@@ -18,7 +18,7 @@ pub use diff::{
 };
 pub use error::ReviewError;
 pub use github::{
-    GitHub, ProgressComment, RunPermission, StatusState, decide_run_permission,
+    EventName, GitHub, ProgressComment, RunPermission, StatusState, decide_run_permission,
     has_reviewable_path, should_skip_review,
 };
 pub use holistic::{MAXIMUM_ROUNDS, run_holistic_review};
@@ -27,7 +27,7 @@ pub use model::{
     ChatMessage, ChatRequest, Confidence, ModelClient, ModelEndpoint, ModelReply, ReviewAnswer,
     Role, ToolCall, Violation, parse_answer,
 };
-pub use pipeline::{CiOptions, endpoint_for, run_ci_review};
+pub use pipeline::{CiOptions, StatusPrefix, endpoint_for, run_ci_review};
 pub use post::{
     DropReason, DroppedFinding, PostTarget, ValidationOutcome, build_footer, build_summary_body,
     publish_findings, validate_violations,

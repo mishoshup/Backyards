@@ -1,5 +1,6 @@
 mod client;
 mod diff;
+mod event_name;
 mod paths;
 mod progress_comment;
 mod reaction;
@@ -8,6 +9,7 @@ mod skip;
 mod status;
 
 pub use client::GitHub;
+pub use event_name::EventName;
 pub use paths::has_reviewable_path;
 pub use progress_comment::{BOT_LOGIN, ProgressComment};
 pub use run_counter::{FORCE_PHRASE, MAXIMUM_RUNS, RunPermission, decide_run_permission};

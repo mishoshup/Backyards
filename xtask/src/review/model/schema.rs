@@ -20,6 +20,20 @@ pub struct Violation {
     pub confidence: Confidence,
 }
 
+impl Violation {
+    #[must_use]
+    pub fn describe_for_report(&self) -> String {
+        let marker = match self.confidence {
+            Confidence::High => "",
+            Confidence::Low => " (low confidence)",
+        };
+        format!(
+            "  {}:{} {}{marker}: {}",
+            self.path, self.line, self.rule_identifier, self.body
+        )
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ReviewAnswer {

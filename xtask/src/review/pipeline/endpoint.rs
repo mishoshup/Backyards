@@ -10,17 +10,10 @@ pub fn endpoint_for(mode: ReviewerMode) -> Result<ModelEndpoint, ReviewError> {
         .map_err(|error| ReviewError::unusable_environment("DEEPSEEK_API_KEY", &error))?;
     let base_url =
         std::env::var("DEEPSEEK_BASE_URL").unwrap_or_else(|_| DEFAULT_BASE_URL.to_owned());
-    let model = std::env::var(model_variable(mode)).unwrap_or_else(|_| DEFAULT_MODEL.to_owned());
+    let model = std::env::var(mode.model_variable()).unwrap_or_else(|_| DEFAULT_MODEL.to_owned());
     Ok(ModelEndpoint::new(
         format!("{base_url}/chat/completions"),
         api_key,
         model,
     ))
-}
-
-const fn model_variable(mode: ReviewerMode) -> &'static str {
-    match mode {
-        ReviewerMode::Inline => "REVIEW_MODEL_INLINE",
-        ReviewerMode::Holistic => "REVIEW_MODEL_HOLISTIC",
-    }
 }

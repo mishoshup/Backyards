@@ -3,16 +3,13 @@ use std::path::{Path, PathBuf};
 
 use crate::report::{GateError, pluralize, write_report_line};
 use crate::review::diff::read_local_diff;
-use crate::review::model::{Confidence, Violation, extract_json_object, parse_answer};
+use crate::review::model::{extract_json_object, parse_answer};
 use crate::review::pipeline::{ReviewContext, load_review_context};
 use crate::review::post::{ValidationOutcome, validate_answer};
-use crate::review::prompt::{build_system_prompt, build_user_prompt, load_reviewer_instructions};
+use crate::review::prompt::build_review_prompts;
 use crate::review::worker::{ReviewerResult, run_each_reviewer_mode};
 use crate::review::{ReviewError, ReviewerMode};
 use crate::workspace::{Repository, capture_command};
-
-const HOLISTIC_REQUEST: &str = "Follow the instructions in the attached file.";
-const INLINE_REQUEST: &str = "Follow the instructions in the attached file. The file holds the diff and every rule, so do not call tools or read other files. Answer with the JSON object only.";
 
 #[derive(Debug, Clone)]
 pub struct LocalOptions {
@@ -41,10 +38,8 @@ fn run_one_reviewer(
     context: &ReviewContext<'_>,
     mode: ReviewerMode,
 ) -> Result<ValidationOutcome, GateError> {
-    let instructions = load_reviewer_instructions(repository, mode)?;
-    let system = build_system_prompt(&instructions, mode, &context.rules);
-    let user = build_user_prompt(mode, &context.diff);
-    let prompt_path = write_prompt_file(mode, &format!("{system}\n\n{user}"))?;
+    let prompts = build_review_prompts(repository, mode, &context.rules, &context.diff)?;
+    let prompt_path = write_prompt_file(mode, &format!("{}\n\n{}", prompts.system, prompts.user))?;
     let output = run_opencode(repository, options, mode, &prompt_path);
     remove_prompt_file(&prompt_path)?;
     let answer = parse_opencode_answer(&output?)?;
@@ -103,7 +98,7 @@ fn run_opencode(
             &options.model,
             "-f",
             &attachment,
-            select_attachment_request(mode),
+            mode.attachment_request(),
         ],
         &[0],
     )
@@ -149,28 +144,10 @@ fn report_validated(mode: ReviewerMode, validated: &ValidationOutcome) -> Result
         validated.dropped.len()
     ))?;
     for violation in &validated.accepted {
-        write_report_line(&describe_violation(violation))?;
+        write_report_line(&violation.describe_for_report())?;
     }
     for dropped in &validated.dropped {
         write_report_line(&format!("  dropped {}", dropped.describe()))?;
     }
     Ok(validated.accepted.len())
-}
-
-fn describe_violation(violation: &Violation) -> String {
-    let marker = match violation.confidence {
-        Confidence::High => "",
-        Confidence::Low => " (low confidence)",
-    };
-    format!(
-        "  {}:{} {}{marker}: {}",
-        violation.path, violation.line, violation.rule_identifier, violation.body
-    )
-}
-
-const fn select_attachment_request(mode: ReviewerMode) -> &'static str {
-    match mode {
-        ReviewerMode::Inline => INLINE_REQUEST,
-        ReviewerMode::Holistic => HOLISTIC_REQUEST,
-    }
 }

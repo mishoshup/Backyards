@@ -34,6 +34,24 @@ impl ReviewerMode {
     }
 
     #[must_use]
+    pub const fn attachment_request(self) -> &'static str {
+        match self {
+            Self::Inline => {
+                "Follow the instructions in the attached file. The file holds the diff and every rule, so do not call tools or read other files. Answer with the JSON object only."
+            }
+            Self::Holistic => "Follow the instructions in the attached file.",
+        }
+    }
+
+    #[must_use]
+    pub const fn model_variable(self) -> &'static str {
+        match self {
+            Self::Inline => "REVIEW_MODEL_INLINE",
+            Self::Holistic => "REVIEW_MODEL_HOLISTIC",
+        }
+    }
+
+    #[must_use]
     pub const fn user_request(self) -> &'static str {
         match self {
             Self::Inline => {

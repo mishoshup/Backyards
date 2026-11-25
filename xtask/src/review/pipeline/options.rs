@@ -1,13 +1,14 @@
-use crate::review::github::GitHub;
+use crate::review::github::{EventName, GitHub};
+use crate::review::pipeline::status_prefix::StatusPrefix;
 
 #[derive(Debug, Clone)]
 pub struct CiOptions {
     pub pull_request: u64,
     pub repository: String,
-    pub event_name: String,
+    pub event_name: EventName,
     pub comment_body: String,
     pub comment_author_association: String,
-    pub status_prefix: String,
+    pub status_prefix: StatusPrefix,
 }
 
 impl CiOptions {
