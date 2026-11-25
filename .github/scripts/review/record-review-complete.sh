@@ -5,10 +5,12 @@ readonly head_sha="${1:?head SHA required}"
 readonly status_context="${2:?status context required}"
 readonly description="${3:-Reviewed at this commit}"
 readonly maximum_description_length=140
+# shellcheck source=/dev/null
+source "$(dirname "$0")/validate-status-context.sh"
 
 validate_arguments() {
   [[ "${head_sha}" =~ ^[0-9a-f]{40}$ ]] || { echo "head SHA must be 40 hexadecimal characters" >&2; exit 1; }
-  [[ "${status_context}" =~ ^[a-z0-9]([a-z0-9/_-]*[a-z0-9])?$ ]] || { echo "invalid status context" >&2; exit 1; }
+  validate_status_context "${status_context}"
 }
 
 post_status() {

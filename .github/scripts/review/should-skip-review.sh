@@ -3,11 +3,12 @@ set -euo pipefail
 
 readonly pull_request_number="${1:?pull request number required}"
 readonly reviewer_context="${2:?status context required}"
-readonly context_pattern='^[a-z0-9]([a-z0-9/_-]*[a-z0-9])?$'
+# shellcheck source=/dev/null
+source "$(dirname "$0")/validate-status-context.sh"
 
 validate_arguments() {
   [[ "${pull_request_number}" =~ ^[0-9]+$ ]] || { echo "pull request number must be an integer" >&2; exit 1; }
-  [[ "${reviewer_context}" =~ ${context_pattern} ]] || { echo "status context must be lowercase with / _ - separators" >&2; exit 1; }
+  validate_status_context "${reviewer_context}"
 }
 
 read_head_sha() {

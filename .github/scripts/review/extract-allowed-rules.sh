@@ -8,7 +8,8 @@ collect_rule_identifiers() {
   local rule_file
   for rule_file in "${rules_directory}"/[!_]*.md; do
     [[ -f "${rule_file}" ]] || continue
-    grep -m1 '^ruleId:' "${rule_file}" | grep -oE '[A-Z]+(-[A-Z]+)*-[0-9]+' || true
+    grep -m1 '^ruleId:' "${rule_file}" | grep -oE '[A-Z]+(-[A-Z]+)*-[0-9]+' \
+      || { echo "rule file ${rule_file} has no ruleId" >&2; exit 1; }
   done
 }
 

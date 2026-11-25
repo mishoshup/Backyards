@@ -2,6 +2,7 @@
 set -euo pipefail
 
 base_url="${DEEPSEEK_BASE_URL:-https://api.deepseek.com}"
+readonly request_timeout_seconds=600
 
 select_model() {
   case "$1" in
@@ -23,7 +24,7 @@ build_request_body() {
 }
 
 send_request() {
-  curl -fsS --max-time 600 "${base_url}/chat/completions" \
+  curl -fsS --max-time "${request_timeout_seconds}" "${base_url}/chat/completions" \
     -H "Authorization: Bearer ${DEEPSEEK_API_KEY}" \
     -H "Content-Type: application/json" \
     --data-binary @-
