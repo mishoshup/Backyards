@@ -5,7 +5,7 @@ use crate::review::github::{FORCE_PHRASE, GitHub, MAXIMUM_RUNS, ProgressComment,
 use crate::review::pipeline::deadline::with_deadline;
 use crate::review::pipeline::decide::{RunDecision, decide_run};
 use crate::review::pipeline::finish::{
-    ReviewSummary, finish_failure, finish_success, record_status, summarize,
+    ReviewSummary, describe_summary, finish_failure, finish_success, record_status, summarize,
 };
 use crate::review::pipeline::options::{CiOptions, ReviewRun};
 use crate::review::pipeline::reviewers::{ReviewerResult, load_review_context, run_both_reviewers};
@@ -119,9 +119,10 @@ fn review_and_publish(
         .read_pull_request_diff(run.options.pull_request, run.head_sha)?;
     let context = load_review_context(repository, diff)?;
     let split = split_results(run_both_reviewers(&context));
-    publish_all(run, &split.outcomes)?;
-    fail_if_any_reviewer_failed(&split.failures, split.outcomes.len())?;
-    Ok(summarize(&split.outcomes))
+    let publication = publish_all(run, &split.outcomes);
+    let summaries = summarize(&split.outcomes);
+    fail_if_anything_failed(&split.failures, &summaries, publication)?;
+    Ok(summaries)
 }
 
 struct SplitResults {
@@ -143,22 +144,29 @@ fn split_results(results: Vec<ReviewerResult>) -> SplitResults {
     split
 }
 
-fn fail_if_any_reviewer_failed(
+fn fail_if_anything_failed(
     failures: &[(ReviewerMode, GateError)],
-    posted_reviewers: usize,
+    summaries: &[ReviewSummary],
+    publication: Result<(), GateError>,
 ) -> Result<(), GateError> {
-    if failures.is_empty() {
-        return Ok(());
-    }
-    let reasons: Vec<String> = failures
+    let mut reasons: Vec<String> = failures
         .iter()
         .map(|(mode, error)| format!("{} reviewer failed: {error}", mode.label()))
         .collect();
+    if let Err(error) = publication {
+        reasons.push(format!("publishing findings failed: {error}"));
+    }
+    if reasons.is_empty() {
+        return Ok(());
+    }
+    let posted_reviewers = summaries.len();
+    let completed: Vec<String> = summaries.iter().map(describe_summary).collect();
     Err(ReviewError::ReviewersFailed {
         details: format!(
-            "{}. Findings from {} were posted. Run `/agent-review` to retry; after {MAXIMUM_RUNS} runs the owner must use `/agent-review force`.",
+            "{}. Completed {}: {}. Run `/agent-review` to retry; after {MAXIMUM_RUNS} runs the owner must use `/agent-review force`.",
             reasons.join("; "),
-            pluralize(posted_reviewers, "other reviewer", "other reviewers")
+            pluralize(posted_reviewers, "reviewer", "reviewers"),
+            completed.join(" | ")
         ),
     }
     .into())

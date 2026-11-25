@@ -13,6 +13,12 @@ pub struct ReviewSummary {
     pub dropped_details: Vec<String>,
 }
 
+impl ReviewSummary {
+    const fn is_clean(&self) -> bool {
+        self.accepted == 0 && self.dropped == 0
+    }
+}
+
 pub fn summarize(outcomes: &[(ReviewerMode, ValidationOutcome)]) -> Vec<ReviewSummary> {
     outcomes
         .iter()
@@ -77,9 +83,7 @@ pub fn finish_success(
         ProgressComment::short_sha(run.head_sha),
         lines.join("\n- ")
     );
-    let is_clean = summaries
-        .iter()
-        .all(|summary| summary.accepted == 0 && summary.dropped == 0);
+    let is_clean = summaries.iter().all(ReviewSummary::is_clean);
     update_comment_and_reactions(run.github, comment, &body, is_clean)?;
     record_status(
         run,

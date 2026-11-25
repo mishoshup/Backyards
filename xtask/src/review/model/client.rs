@@ -3,6 +3,8 @@ use std::time::Instant;
 
 use serde_json::{Value, json};
 
+use crate::report::pluralize;
+
 const MAXIMUM_TOOL_CALLS_PER_REPLY: usize = 32;
 const MAXIMUM_ANSWER_BYTES: usize = 4_000_000;
 const MAXIMUM_REASONING_BYTES: usize = 4_000_000;
@@ -243,10 +245,10 @@ impl StreamState {
         self.last_report = Instant::now();
         writeln!(
             progress,
-            "model working: {}s elapsed, {} reasoning chunks, {} answer bytes",
+            "model working: {}s elapsed, {}, {}",
             self.started.elapsed().as_secs(),
-            self.reasoning_chunks,
-            self.content.len()
+            pluralize(self.reasoning_chunks, "reasoning chunk", "reasoning chunks"),
+            pluralize(self.content.len(), "answer byte", "answer bytes")
         )
         .map_err(|source| ReviewError::ProgressWrite {
             reason: source.to_string(),

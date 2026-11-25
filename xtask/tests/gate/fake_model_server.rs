@@ -3,6 +3,22 @@ use std::net::{TcpListener, TcpStream};
 use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 
+pub fn client_for(
+    server: &FakeModelServer,
+    idle_timeout: Option<std::time::Duration>,
+) -> xtask::review::ModelClient {
+    let mut endpoint = xtask::review::ModelEndpoint::new(
+        format!("{}/chat/completions", server.url),
+        "key".to_owned(),
+        "model".to_owned(),
+    );
+    endpoint.retry_delay = std::time::Duration::from_millis(10);
+    if let Some(timeout) = idle_timeout {
+        endpoint.idle_timeout = timeout;
+    }
+    xtask::review::ModelClient::new(endpoint)
+}
+
 pub enum Script {
     Respond(String),
     Status(u16),

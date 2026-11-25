@@ -1,22 +1,10 @@
 use std::time::Duration;
 
 use crate::fake_model_server::{
-    FakeModelServer, Script, content_event, finish_event, reasoning_event, tool_call_event,
+    FakeModelServer, Script, client_for, content_event, finish_event, reasoning_event,
+    tool_call_event,
 };
-use xtask::review::{
-    ChatMessage, ChatRequest, ModelClient, ModelEndpoint, ReviewError, Role, parse_answer,
-};
-
-fn client_for(server: &FakeModelServer) -> ModelClient {
-    let mut endpoint = ModelEndpoint::new(
-        format!("{}/chat/completions", server.url),
-        "key".to_owned(),
-        "model".to_owned(),
-    );
-    endpoint.retry_delay = Duration::from_millis(10);
-    endpoint.idle_timeout = Duration::from_millis(400);
-    ModelClient::new(endpoint)
-}
+use xtask::review::{ChatMessage, ChatRequest, ModelClient, ReviewError, Role, parse_answer};
 
 fn ask(client: &ModelClient) -> Result<xtask::review::ModelReply, ReviewError> {
     let messages = [ChatMessage::new(Role::User, "review".to_owned())];
@@ -41,7 +29,7 @@ fn answer_stream(answer: &str) -> String {
 fn reasoning_chunks_then_answer_is_collected() {
     let server =
         FakeModelServer::start(vec![Script::Respond(answer_stream("{\"violations\":[]}"))]);
-    let reply = ask(&client_for(&server)).unwrap();
+    let reply = ask(&client_for(&server, Some(Duration::from_millis(400)))).unwrap();
     assert_eq!(reply.content, "{\"violations\":[]}");
     assert_eq!(reply.reasoning_chunks, 2);
     assert_eq!(parse_answer(&reply.content).unwrap().violations, []);
@@ -54,14 +42,14 @@ fn server_error_is_retried_once_then_succeeds() {
         Script::Status(500),
         Script::Respond(answer_stream("{\"violations\":[]}")),
     ]);
-    assert!(ask(&client_for(&server)).is_ok());
+    assert!(ask(&client_for(&server, Some(Duration::from_millis(400)))).is_ok());
     assert_eq!(server.finish(), 2);
 }
 
 #[test]
 fn client_error_is_not_retried() {
     let server = FakeModelServer::start(vec![Script::Status(400)]);
-    let error = ask(&client_for(&server)).unwrap_err();
+    let error = ask(&client_for(&server, Some(Duration::from_millis(400)))).unwrap_err();
     assert!(matches!(error, ReviewError::ModelStatus { status: 400 }));
     assert_eq!(server.finish(), 1);
 }
@@ -69,7 +57,7 @@ fn client_error_is_not_retried() {
 #[test]
 fn second_server_error_is_reported() {
     let server = FakeModelServer::start(vec![Script::Status(503), Script::Status(503)]);
-    let error = ask(&client_for(&server)).unwrap_err();
+    let error = ask(&client_for(&server, Some(Duration::from_millis(400)))).unwrap_err();
     assert!(matches!(error, ReviewError::ModelStatus { status: 503 }));
     server.finish();
 }
@@ -80,7 +68,7 @@ fn idle_stall_times_out_and_retries() {
         Script::StallAfterHeaders,
         Script::Respond(answer_stream("{\"violations\":[]}")),
     ]);
-    let result = ask(&client_for(&server));
+    let result = ask(&client_for(&server, Some(Duration::from_millis(400))));
     assert!(result.is_ok(), "{result:?}");
     assert_eq!(server.finish(), 2);
 }
@@ -92,7 +80,7 @@ fn truncated_answer_is_a_failure() {
         content_event("{\"viol"),
         finish_event("length")
     ))]);
-    let error = ask(&client_for(&server)).unwrap_err();
+    let error = ask(&client_for(&server, Some(Duration::from_millis(400)))).unwrap_err();
     assert!(matches!(error, ReviewError::ModelTruncated { .. }));
     server.finish();
 }
@@ -101,7 +89,7 @@ fn truncated_answer_is_a_failure() {
 fn stream_closed_without_finish_reason_is_a_failure() {
     let server =
         FakeModelServer::start(vec![Script::Respond(content_event("{\"violations\":[]}"))]);
-    let error = ask(&client_for(&server)).unwrap_err();
+    let error = ask(&client_for(&server, Some(Duration::from_millis(400)))).unwrap_err();
     assert!(matches!(error, ReviewError::ModelTruncated { .. }));
     server.finish();
 }
@@ -139,7 +127,7 @@ fn oversized_tool_call_index_is_rejected_without_allocation() {
         "grep",
         "{}",
     ))]);
-    let error = ask(&client_for(&server)).unwrap_err();
+    let error = ask(&client_for(&server, Some(Duration::from_millis(400)))).unwrap_err();
     assert!(matches!(error, ReviewError::MalformedStreamEvent { .. }));
     server.finish();
 }

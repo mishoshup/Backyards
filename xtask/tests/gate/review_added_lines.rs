@@ -72,6 +72,9 @@ fn unexpected_line_inside_a_hunk_is_reported() {
 fn diff_over_the_limit_is_rejected_with_its_size() {
     let diff = "x".repeat(MAXIMUM_DIFF_BYTES + 1);
     let error = reject_oversized_diff(&diff).unwrap_err();
-    assert!(error.to_string().contains("split the pull request"));
+    let message = error.to_string();
+    assert!(message.contains(&(MAXIMUM_DIFF_BYTES + 1).to_string()));
+    assert!(message.contains(&MAXIMUM_DIFF_BYTES.to_string()));
+    assert!(message.contains("split the pull request"));
     assert!(reject_oversized_diff("small").is_ok());
 }

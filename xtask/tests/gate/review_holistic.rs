@@ -1,23 +1,11 @@
-use std::time::Duration;
-
 use crate::fake_model_server::{
-    FakeModelServer, Script, content_event, finish_event, reasoning_event, tool_call_event,
+    FakeModelServer, Script, client_for, content_event, finish_event, reasoning_event,
+    tool_call_event,
 };
 use crate::fixture::Fixture;
 use xtask::review::{
-    ChatMessage, MAXIMUM_ROUNDS, ModelClient, ModelEndpoint, ReviewError, Role, ToolRunner,
-    run_holistic_review,
+    ChatMessage, MAXIMUM_ROUNDS, ReviewError, Role, ToolRunner, run_holistic_review,
 };
-
-fn client_for(server: &FakeModelServer) -> ModelClient {
-    let mut endpoint = ModelEndpoint::new(
-        format!("{}/chat/completions", server.url),
-        "key".to_owned(),
-        "model".to_owned(),
-    );
-    endpoint.retry_delay = Duration::from_millis(10);
-    ModelClient::new(endpoint)
-}
 
 fn final_answer(answer: &str) -> Script {
     Script::Respond(format!(
@@ -42,7 +30,7 @@ fn run(
 ) -> Result<xtask::review::ReviewAnswer, ReviewError> {
     let messages = vec![ChatMessage::new(Role::User, "review".to_owned())];
     run_holistic_review(
-        &client_for(server),
+        &client_for(server, None),
         ToolRunner::new(fixture.path()),
         messages,
         &mut Vec::new(),

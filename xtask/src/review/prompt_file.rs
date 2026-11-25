@@ -75,5 +75,7 @@ fn write_private_file(path: &Path, content: &str) -> std::io::Result<()> {
         .create_new(true)
         .mode(PROMPT_FILE_MODE)
         .open(path)?;
-    file.write_all(content.as_bytes())
+    file.write_all(content.as_bytes()).inspect_err(|_| {
+        report_removal_failure(path);
+    })
 }
