@@ -20,8 +20,8 @@ pub use diff::{
 };
 pub use error::ReviewError;
 pub use github::{
-    EventName, GitHub, ProgressComment, RunPermission, StatusState, decide_run_permission,
-    has_reviewable_path, should_skip_review,
+    AuthorAssociation, EventName, GitHub, ProgressComment, RunPermission, StatusState,
+    decide_run_permission, has_reviewable_path, should_skip_review,
 };
 pub use holistic::{MAXIMUM_ROUNDS, run_holistic_review};
 pub use mode::{ALL_REVIEWER_MODES, ReviewerMode};

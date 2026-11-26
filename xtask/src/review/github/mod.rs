@@ -1,3 +1,4 @@
+mod author_association;
 mod client;
 mod diff;
 mod event_name;
@@ -8,6 +9,7 @@ mod run_counter;
 mod skip;
 mod status;
 
+pub use author_association::AuthorAssociation;
 pub use client::GitHub;
 pub use event_name::EventName;
 pub use paths::has_reviewable_path;

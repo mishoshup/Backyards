@@ -1,7 +1,7 @@
 use clap::{Args, Subcommand};
 
 use crate::report::GateError;
-use crate::review::github::EventName;
+use crate::review::github::{AuthorAssociation, EventName};
 use crate::review::local::{LocalOptions, run_local_review};
 use crate::review::pipeline::{CiOptions, StatusPrefix, run_ci_review};
 use crate::workspace::Repository;
@@ -37,7 +37,7 @@ pub struct PullRequestArguments {
     #[arg(long, env = "REVIEW_COMMENT_BODY", default_value = "")]
     comment_body: String,
     #[arg(long, env = "REVIEW_COMMENT_AUTHOR_ASSOCIATION", default_value = "")]
-    comment_author_association: String,
+    comment_author_association: AuthorAssociation,
     #[arg(long, default_value = "ai-review-completed/deepseek")]
     status_prefix: StatusPrefix,
 }
@@ -58,7 +58,7 @@ impl From<&PullRequestArguments> for CiOptions {
             repository: arguments.repository.clone(),
             event_name: arguments.event_name,
             comment_body: arguments.comment_body.clone(),
-            comment_author_association: arguments.comment_author_association.clone(),
+            comment_author_association: arguments.comment_author_association,
             status_prefix: arguments.status_prefix.clone(),
         }
     }

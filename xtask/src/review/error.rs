@@ -18,8 +18,8 @@ pub enum ReviewError {
     ModelTimeout { reason: String },
     #[error("model connection failed: {reason}")]
     ModelConnection { reason: String },
-    #[error("model returned HTTP {status}")]
-    ModelStatus { status: u16 },
+    #[error("model returned HTTP {status}: {detail}")]
+    ModelStatus { status: u16, detail: String },
     #[error("commit status has an unknown state {value}")]
     UnknownStatusState { value: String },
     #[error("progress report could not be written: {reason}")]
@@ -59,7 +59,7 @@ impl ReviewError {
     pub const fn is_retryable(&self) -> bool {
         match self {
             Self::ModelTimeout { .. } | Self::ModelConnection { .. } => true,
-            Self::ModelStatus { status } => *status == 429 || *status >= 500,
+            Self::ModelStatus { status, .. } => *status == 429 || *status >= 500,
             Self::DiffTooLarge { .. }
             | Self::MalformedHunkHeader { .. }
             | Self::MalformedDiff { .. }

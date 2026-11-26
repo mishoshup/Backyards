@@ -25,7 +25,7 @@ pub fn decide_run(
     if let RunPermission::Refused { previous_runs } = decide_run_permission(
         previous_runs,
         &options.comment_body,
-        &options.comment_author_association,
+        options.comment_author_association,
     ) {
         return Ok(RunDecision::RunCapReached { previous_runs });
     }

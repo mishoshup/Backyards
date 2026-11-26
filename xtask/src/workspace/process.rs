@@ -122,9 +122,7 @@ fn finish_child(
         command: description.clone(),
         source,
     })?;
-    let stderr = stderr_drain
-        .and_then(|drain| drain.join().ok())
-        .unwrap_or_default();
+    let stderr = collect_stderr(stderr_drain);
     ensure_accepted_exit(
         &Output {
             status,
@@ -198,9 +196,17 @@ fn discard_child(
 }
 
 fn join_stderr_drain(stderr_drain: Option<JoinHandle<Vec<u8>>>) {
-    if let Some(drain) = stderr_drain {
-        drop(drain.join());
-    }
+    drop(collect_stderr(stderr_drain));
+}
+
+fn collect_stderr(stderr_drain: Option<JoinHandle<Vec<u8>>>) -> Vec<u8> {
+    let Some(drain) = stderr_drain else {
+        return Vec::new();
+    };
+    drain.join().unwrap_or_else(|_panic| {
+        drop(write_report_line("warning: stderr reader thread panicked"));
+        Vec::new()
+    })
 }
 
 fn kill_child(child: &mut Child, description: &str) -> Result<(), GateError> {

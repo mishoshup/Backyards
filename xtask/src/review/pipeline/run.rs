@@ -181,14 +181,12 @@ fn publish_all(
         pull_request: run.options.pull_request,
         head_sha: run.head_sha,
     };
-    let failures: Vec<String> = outcomes
-        .iter()
-        .filter_map(|(mode, outcome)| {
-            publish_findings(run.github, target, *mode, &outcome.accepted)
-                .err()
-                .map(|error| error.to_string())
-        })
-        .collect();
+    let mut failures = Vec::new();
+    for (mode, outcome) in outcomes {
+        if let Err(error) = publish_findings(run.github, target, *mode, &outcome.accepted) {
+            failures.push(error.to_string());
+        }
+    }
     fail_if_any_publish_failed(&failures)
 }
 

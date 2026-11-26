@@ -8,6 +8,8 @@ const AREA: &str = "workflow";
 const REVIEW_WORKFLOW: &str = ".github/workflows/agent-code-review.yml";
 const REQUIRED_TIMEOUT_MINUTES: u32 = 25;
 const PIPELINE_COMMAND: &str = "cargo xtask review pull-request";
+const PIPELINE_SOURCE: &str = "xtask/src/review/pipeline/run.rs";
+const HEAD_COMMIT_ARGUMENTS: &str = r#"&["rev-parse", "HEAD"]"#;
 const FORBIDDEN_TRIGGER: &str = "synchronize";
 const REQUIRED_TRIGGER_TYPES: &str = "types: [opened, ready_for_review]";
 const TIMEOUT_PATTERN: &str = r"timeout-minutes:\s*(\d+)";
@@ -19,6 +21,7 @@ pub fn check_workflow_policy(repository: &Repository) -> Result<Vec<Finding>, Ga
     findings.extend(check_timeout_covers_worst_case(&workflow)?);
     findings.extend(check_default_permissions_are_empty(&workflow));
     findings.extend(check_reviewed_commit_is_pinned(&workflow));
+    findings.extend(check_head_commit_is_read_locally(repository)?);
     findings.extend(check_fork_pull_requests_are_refused(&workflow));
     findings.extend(check_review_does_not_run_on_every_push(&workflow));
     findings.extend(check_review_uses_the_rust_pipeline(&workflow));
@@ -69,6 +72,16 @@ fn check_reviewed_commit_is_pinned(workflow: &str) -> Vec<Finding> {
         return Vec::new();
     }
     create_violation("checkout must name the pull request ref")
+}
+
+fn check_head_commit_is_read_locally(repository: &Repository) -> Result<Vec<Finding>, GateError> {
+    let pipeline = repository.read_text(Path::new(PIPELINE_SOURCE))?;
+    if pipeline.contains(HEAD_COMMIT_ARGUMENTS) {
+        return Ok(Vec::new());
+    }
+    Ok(create_violation(
+        "review must read the commit under review from the checked-out HEAD",
+    ))
 }
 
 fn check_fork_pull_requests_are_refused(workflow: &str) -> Vec<Finding> {

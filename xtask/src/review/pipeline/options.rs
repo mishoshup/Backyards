@@ -1,4 +1,4 @@
-use crate::review::github::{EventName, GitHub};
+use crate::review::github::{AuthorAssociation, EventName, GitHub};
 use crate::review::pipeline::status_prefix::StatusPrefix;
 
 #[derive(Debug, Clone)]
@@ -7,7 +7,7 @@ pub struct CiOptions {
     pub repository: String,
     pub event_name: EventName,
     pub comment_body: String,
-    pub comment_author_association: String,
+    pub comment_author_association: AuthorAssociation,
     pub status_prefix: StatusPrefix,
 }
 

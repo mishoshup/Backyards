@@ -9,6 +9,8 @@ const MAXIMUM_TOOL_CALLS_PER_REPLY: usize = 32;
 const MAXIMUM_ANSWER_BYTES: usize = 4_000_000;
 const MAXIMUM_REASONING_BYTES: usize = 4_000_000;
 const MAXIMUM_TOOL_ARGUMENT_BYTES: usize = 1_000_000;
+const MAXIMUM_TOOL_NAME_BYTES: usize = 256;
+const MAXIMUM_ERROR_DETAIL_BYTES: u64 = 2_000;
 
 use crate::review::error::ReviewError;
 use crate::review::model::endpoint::{
@@ -73,15 +75,36 @@ impl ModelClient {
         &self,
         request: ChatRequest<'_>,
     ) -> Result<ureq::http::Response<ureq::Body>, ReviewError> {
-        self.agent
+        let response = self
+            .agent
             .post(&self.endpoint.url)
             .header(
                 "Authorization",
                 &format!("Bearer {}", self.endpoint.api_key.expose()),
             )
             .send_json(build_request_body(&self.endpoint.model, request))
-            .map_err(|error| classify_transport_error(&error))
+            .map_err(|error| classify_transport_error(&error))?;
+        reject_failure_status(response)
     }
+}
+
+fn reject_failure_status(
+    response: ureq::http::Response<ureq::Body>,
+) -> Result<ureq::http::Response<ureq::Body>, ReviewError> {
+    let status = response.status();
+    if status.is_success() {
+        return Ok(response);
+    }
+    let detail = response
+        .into_body()
+        .with_config()
+        .limit(MAXIMUM_ERROR_DETAIL_BYTES)
+        .read_to_string()
+        .unwrap_or_default();
+    Err(ReviewError::ModelStatus {
+        status: status.as_u16(),
+        detail: detail.trim().to_owned(),
+    })
 }
 
 fn build_agent(endpoint: &ModelEndpoint) -> ureq::Agent {
@@ -89,6 +112,7 @@ fn build_agent(endpoint: &ModelEndpoint) -> ureq::Agent {
         .timeout_connect(Some(CONNECT_TIMEOUT))
         .timeout_per_read(Some(endpoint.idle_timeout))
         .timeout_global(Some(TOTAL_TIMEOUT))
+        .http_status_as_error(false)
         .build()
         .into()
 }
@@ -109,9 +133,6 @@ fn build_request_body(model: &str, request: ChatRequest<'_>) -> Value {
 }
 
 fn classify_transport_error(error: &ureq::Error) -> ReviewError {
-    if let ureq::Error::StatusCode(status) = error {
-        return ReviewError::ModelStatus { status: *status };
-    }
     if let ureq::Error::Timeout(timeout) = error {
         return ReviewError::ModelTimeout {
             reason: timeout.to_string(),
@@ -222,9 +243,15 @@ impl StreamState {
         }
         let call = &mut self.tool_calls[fragment.index];
         if let Some(identifier) = fragment.identifier {
+            reject_over_limit("tool call id", identifier.len(), MAXIMUM_TOOL_NAME_BYTES)?;
             call.id = identifier;
         }
         if let Some(name) = fragment.name {
+            reject_over_limit(
+                "tool call name",
+                call.function.name.len() + name.len(),
+                MAXIMUM_TOOL_NAME_BYTES,
+            )?;
             call.function.name.push_str(&name);
         }
         if let Some(arguments) = fragment.arguments {

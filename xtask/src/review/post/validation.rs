@@ -92,10 +92,18 @@ fn find_drop_reason(
     if !added.contains_path(&violation.path) {
         return Some(DropReason::PathNotInDiff);
     }
-    if !added.contains(&violation.path, violation.line) {
+    if !is_line_reviewable(added, mode, violation) {
         return Some(DropReason::LineNotAdded);
     }
     find_rule_drop_reason(violation, mode, allowed_rules)
+}
+
+fn is_line_reviewable(added: &AddedLines, mode: ReviewerMode, violation: &Violation) -> bool {
+    if mode.should_include_rule_files() {
+        added.contains(&violation.path, violation.line)
+    } else {
+        added.contains_visible(&violation.path, violation.line)
+    }
 }
 
 fn find_rule_drop_reason(

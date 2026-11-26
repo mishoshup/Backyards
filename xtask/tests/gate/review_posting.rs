@@ -2,9 +2,9 @@ use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 
 use xtask::review::{
-    Confidence, EventName, GitHub, PostTarget, ReviewerMode, RunPermission, StatusState, Violation,
-    build_footer, build_summary_body, decide_run_permission, has_reviewable_path, publish_findings,
-    should_skip_review,
+    AuthorAssociation, Confidence, EventName, GitHub, PostTarget, ReviewerMode, RunPermission,
+    StatusState, Violation, build_footer, build_summary_body, decide_run_permission,
+    has_reviewable_path, publish_findings, should_skip_review,
 };
 
 use crate::fixture::Fixture;
@@ -189,7 +189,7 @@ fn comment_listing_stops_paging_once_the_cap_is_known() {
 #[test]
 fn only_the_owner_can_force_a_third_run() {
     assert_eq!(
-        decide_run_permission(2, "/agent-review force", "COLLABORATOR"),
+        decide_run_permission(2, "/agent-review force", AuthorAssociation::Collaborator),
         RunPermission::Refused { previous_runs: 2 }
     );
 }
@@ -197,15 +197,15 @@ fn only_the_owner_can_force_a_third_run() {
 #[test]
 fn third_run_is_refused_unless_forced() {
     assert_eq!(
-        decide_run_permission(1, "/agent-review", "MEMBER"),
+        decide_run_permission(1, "/agent-review", AuthorAssociation::Member),
         RunPermission::Allowed
     );
     assert_eq!(
-        decide_run_permission(2, "/agent-review", "OWNER"),
+        decide_run_permission(2, "/agent-review", AuthorAssociation::Owner),
         RunPermission::Refused { previous_runs: 2 }
     );
     assert_eq!(
-        decide_run_permission(5, "please /agent-review force", "OWNER"),
+        decide_run_permission(5, "please /agent-review force", AuthorAssociation::Owner),
         RunPermission::Allowed
     );
 }

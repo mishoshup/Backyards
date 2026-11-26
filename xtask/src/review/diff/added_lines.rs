@@ -11,35 +11,51 @@ const DEFAULT_RANGE_COUNT: u32 = 1;
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct AddedLines {
-    lines_by_path: BTreeMap<String, BTreeSet<u32>>,
+    added_by_path: BTreeMap<String, BTreeSet<u32>>,
+    context_by_path: BTreeMap<String, BTreeSet<u32>>,
 }
 
 impl AddedLines {
     #[must_use]
     pub fn contains(&self, path: &str, line: u32) -> bool {
-        self.lines_by_path
-            .get(path)
-            .is_some_and(|lines| lines.contains(&line))
+        has_line(&self.added_by_path, path, line)
+    }
+
+    #[must_use]
+    pub fn contains_visible(&self, path: &str, line: u32) -> bool {
+        self.contains(path, line) || has_line(&self.context_by_path, path, line)
     }
 
     #[must_use]
     pub fn contains_path(&self, path: &str) -> bool {
-        self.lines_by_path.contains_key(path)
+        self.added_by_path.contains_key(path) || self.context_by_path.contains_key(path)
     }
 
     #[must_use]
     pub fn is_empty(&self) -> bool {
-        self.lines_by_path.is_empty()
+        self.added_by_path.is_empty() && self.context_by_path.is_empty()
     }
 
     fn record(&mut self, path: &str, line: u32) {
-        if let Some(lines) = self.lines_by_path.get_mut(path) {
-            lines.insert(line);
-        } else {
-            self.lines_by_path
-                .insert(path.to_owned(), BTreeSet::from([line]));
-        }
+        record_line(&mut self.added_by_path, path, line);
     }
+
+    fn record_context(&mut self, path: &str, line: u32) {
+        record_line(&mut self.context_by_path, path, line);
+    }
+}
+
+fn has_line(lines_by_path: &BTreeMap<String, BTreeSet<u32>>, path: &str, line: u32) -> bool {
+    lines_by_path
+        .get(path)
+        .is_some_and(|lines| lines.contains(&line))
+}
+
+fn record_line(lines_by_path: &mut BTreeMap<String, BTreeSet<u32>>, path: &str, line: u32) {
+    lines_by_path
+        .entry(path.to_owned())
+        .or_default()
+        .insert(line);
 }
 
 pub fn parse_added_lines(diff: &str) -> Result<AddedLines, ReviewError> {
@@ -108,7 +124,10 @@ impl DiffParser {
                 progress.advance_after_addition()
             }
             Some('-') => progress.advance_after_removal(),
-            Some(' ') | None => progress.advance_after_context(),
+            Some(' ') | None => {
+                self.record_context_line(progress.next_new_line);
+                progress.advance_after_context()
+            }
             Some('\\') => progress,
             Some(_) => {
                 return Err(ReviewError::MalformedDiff {
@@ -127,6 +146,12 @@ impl DiffParser {
             self.hunk = Some(parse_hunk_header(line)?);
         }
         Ok(())
+    }
+
+    fn record_context_line(&mut self, line: u32) {
+        if let Some(path) = &self.current_path {
+            self.added.record_context(path, line);
+        }
     }
 
     fn record_added_line(&mut self, line: u32) {

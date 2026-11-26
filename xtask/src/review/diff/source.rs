@@ -41,12 +41,26 @@ fn diff_untracked_files(
     )?;
     let mut combined = String::new();
     for path in listing.split('\0').filter(|path| !path.is_empty()) {
-        if !is_binary_file(repository, path)? {
-            reject_file_over_remaining_budget(repository, path, tracked_bytes + combined.len())?;
-        }
+        reject_oversized_text_file(repository, path, tracked_bytes + combined.len())?;
         combined.push_str(&diff_new_file(repository, path)?);
     }
     Ok(combined)
+}
+
+fn reject_oversized_text_file(
+    repository: &Repository,
+    path: &str,
+    already_captured: usize,
+) -> Result<(), GateError> {
+    let rejection = reject_file_over_remaining_budget(repository, path, already_captured);
+    match rejection {
+        Err(GateError::Review(ReviewError::DiffTooLarge { .. }))
+            if is_binary_file(repository, path)? =>
+        {
+            Ok(())
+        }
+        other => other,
+    }
 }
 
 fn is_binary_file(repository: &Repository, path: &str) -> Result<bool, GateError> {

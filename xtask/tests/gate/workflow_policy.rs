@@ -6,7 +6,22 @@ const GOOD_WORKFLOW: &str = "permissions: {}\non:\n  pull_request:\n    types: [
 fn workflow_fixture(workflow: &str) -> Fixture {
     let fixture = Fixture::create();
     fixture.write(".github/workflows/agent-code-review.yml", workflow);
+    fixture.write(
+        "xtask/src/review/pipeline/run.rs",
+        "capture_command(root, \"git\", &[\"rev-parse\", \"HEAD\"], &[0])",
+    );
     fixture
+}
+
+#[test]
+fn pipeline_without_local_head_read_is_reported() {
+    let fixture = workflow_fixture(GOOD_WORKFLOW);
+    fixture.write("xtask/src/review/pipeline/run.rs", "fn run() {}");
+    let findings = check_workflow_policy(&fixture.repository()).unwrap();
+    assert!(any_message_contains(
+        &findings,
+        "commit under review from the checked-out HEAD"
+    ));
 }
 
 #[test]

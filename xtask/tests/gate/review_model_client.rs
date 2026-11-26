@@ -50,7 +50,10 @@ fn server_error_is_retried_once_then_succeeds() {
 fn client_error_is_not_retried() {
     let server = FakeModelServer::start(vec![Script::Status(400)]);
     let error = ask(&client_for(&server, Some(Duration::from_millis(400)))).unwrap_err();
-    assert!(matches!(error, ReviewError::ModelStatus { status: 400 }));
+    assert!(matches!(
+        error,
+        ReviewError::ModelStatus { status: 400, .. }
+    ));
     assert_eq!(server.finish(), 1);
 }
 
@@ -58,7 +61,10 @@ fn client_error_is_not_retried() {
 fn second_server_error_is_reported() {
     let server = FakeModelServer::start(vec![Script::Status(503), Script::Status(503)]);
     let error = ask(&client_for(&server, Some(Duration::from_millis(400)))).unwrap_err();
-    assert!(matches!(error, ReviewError::ModelStatus { status: 503 }));
+    assert!(matches!(
+        error,
+        ReviewError::ModelStatus { status: 503, .. }
+    ));
     server.finish();
 }
 
