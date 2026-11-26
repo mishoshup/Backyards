@@ -7,6 +7,7 @@ const STDERR_CAPTURE_LIMIT: u64 = 65_536;
 
 use crate::report::GateError;
 use crate::report::write_report_line;
+use crate::workspace::active_children::ActiveChild;
 
 pub fn run_command(directory: &Path, program: &str, arguments: &[&str]) -> Result<(), GateError> {
     let description = describe_command(program, arguments);
@@ -44,16 +45,25 @@ pub fn capture_command(
     accepted_exit_codes: &[i32],
 ) -> Result<String, GateError> {
     let description = describe_command(program, arguments);
-    let output = Command::new(program)
-        .args(arguments)
-        .current_dir(directory)
-        .output()
-        .map_err(|source| GateError::RunCommand {
-            command: description.clone(),
-            source,
-        })?;
+    let output = run_registered(directory, program, arguments, &description)?;
     ensure_accepted_exit(&output, accepted_exit_codes, description)?;
     Ok(String::from_utf8_lossy(&output.stdout).into_owned())
+}
+
+fn run_registered(
+    directory: &Path,
+    program: &str,
+    arguments: &[&str],
+    description: &str,
+) -> Result<Output, GateError> {
+    let child = spawn_with_piped_output(directory, program, arguments, description)?;
+    let _registration = ActiveChild::register(child.id());
+    child
+        .wait_with_output()
+        .map_err(|source| GateError::RunCommand {
+            command: description.to_owned(),
+            source,
+        })
 }
 
 fn ensure_accepted_exit(

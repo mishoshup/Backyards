@@ -107,3 +107,22 @@ fn user_prompt_puts_the_request_before_the_diff() {
     assert!(prompt.starts_with("Review this diff against every rule."));
     assert!(prompt.ends_with("diff body"));
 }
+
+#[test]
+fn instructions_symlinked_outside_repository_are_refused() {
+    let outside = crate::fixture::Fixture::create();
+    outside.write("secret.md", "secret");
+    let fixture = crate::fixture::Fixture::create();
+    std::fs::create_dir_all(fixture.path().join(".claude/agents")).unwrap();
+    std::os::unix::fs::symlink(
+        outside.path().join("secret.md"),
+        fixture.path().join(".claude/agents/holistic-reviewer.md"),
+    )
+    .unwrap();
+    let error = xtask::review::load_reviewer_instructions(
+        &fixture.repository(),
+        xtask::review::ReviewerMode::Holistic,
+    )
+    .unwrap_err();
+    assert!(error.to_string().contains("outside the repository"));
+}

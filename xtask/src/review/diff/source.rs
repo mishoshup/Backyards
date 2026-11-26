@@ -1,10 +1,11 @@
-use crate::report::GateError;
+use crate::report::{GateError, write_report_line};
 use crate::review::diff::size_limit::{MAXIMUM_DIFF_BYTES, reject_oversized_diff};
 use crate::review::error::ReviewError;
 use crate::workspace::{Repository, capture_command, capture_command_limited};
 
 const SUCCESS_EXIT: i32 = 0;
 const DIFFERENCES_FOUND_EXIT: i32 = 1;
+const MAXIMUM_UNTRACKED_LISTING_BYTES: usize = 4_000_000;
 
 pub fn read_local_diff(repository: &Repository, base_reference: &str) -> Result<String, GateError> {
     let merge_base = find_merge_base(repository, base_reference)?;
@@ -33,11 +34,11 @@ fn diff_untracked_files(
     repository: &Repository,
     tracked_bytes: usize,
 ) -> Result<String, GateError> {
-    let listing = capture_command(
+    let listing = capture_command_limited(
         repository.root(),
         "git",
         &["ls-files", "--others", "--exclude-standard", "-z"],
-        &[SUCCESS_EXIT],
+        MAXIMUM_UNTRACKED_LISTING_BYTES,
     )?;
     let mut combined = String::new();
     for path in listing.split('\0').filter(|path| !path.is_empty()) {
@@ -57,7 +58,7 @@ fn reject_oversized_text_file(
         Err(GateError::Review(ReviewError::DiffTooLarge { .. }))
             if is_binary_file(repository, path)? =>
         {
-            Ok(())
+            write_report_line(&format!("skipped oversized binary file {path}"))
         }
         other => other,
     }

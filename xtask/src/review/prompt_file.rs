@@ -1,12 +1,14 @@
 use std::io::Write;
 use std::os::unix::fs::OpenOptionsExt;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::report::{GateError, write_report_line};
 use crate::review::ReviewerMode;
 
 const PROMPT_FILE_MODE: u32 = 0o600;
+static NEXT_SEQUENCE: AtomicUsize = AtomicUsize::new(0);
 
 pub struct PromptFile {
     path: PathBuf,
@@ -63,9 +65,10 @@ fn unique_path(mode: ReviewerMode) -> PathBuf {
         .duration_since(UNIX_EPOCH)
         .map_or(0, |elapsed| elapsed.as_nanos());
     std::env::temp_dir().join(format!(
-        "backyards-review-{}-{}-{nanoseconds}.prompt",
+        "backyards-review-{}-{}-{nanoseconds}-{}.prompt",
         mode.label(),
-        std::process::id()
+        std::process::id(),
+        NEXT_SEQUENCE.fetch_add(1, Ordering::SeqCst)
     ))
 }
 

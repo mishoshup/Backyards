@@ -5,6 +5,7 @@ use crate::report::GateError;
 use crate::review::error::ReviewError;
 use crate::workspace::Repository;
 
+const MAXIMUM_RULE_FILE_BYTES: u64 = 256_000;
 const RULES_DIRECTORY: &str = ".agents/skills/rust-coding-standards/rules";
 const RULE_IDENTIFIER_KEY: &str = "ruleId:";
 const HEADING_PREFIX: &str = "# ";
@@ -70,8 +71,21 @@ fn is_rule_file_path(path: &Path) -> bool {
 }
 
 fn load_rule_file(repository: &Repository, path: &Path) -> Result<RuleFile, GateError> {
+    reject_oversized_rule_file(repository, path)?;
     let content = repository.read_text(path)?;
     Ok(parse_rule_file(path, content)?)
+}
+
+fn reject_oversized_rule_file(repository: &Repository, path: &Path) -> Result<(), GateError> {
+    let size = std::fs::metadata(repository.root().join(path)).map_or(0, |metadata| metadata.len());
+    if size > MAXIMUM_RULE_FILE_BYTES {
+        return Err(ReviewError::RuleFileTooLarge {
+            path: path.to_path_buf(),
+            limit: MAXIMUM_RULE_FILE_BYTES,
+        }
+        .into());
+    }
+    Ok(())
 }
 
 fn parse_rule_file(path: &Path, content: String) -> Result<RuleFile, ReviewError> {

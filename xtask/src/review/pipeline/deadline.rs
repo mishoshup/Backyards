@@ -4,12 +4,15 @@ use std::time::{Duration, Instant};
 use crate::review::github::ProgressComment;
 use crate::review::pipeline::finish::finish_failure;
 use crate::review::pipeline::options::ReviewRun;
+use crate::workspace::terminate_active_children;
 
 const REVIEW_DEADLINE: Duration = Duration::from_mins(18);
+const EXIT_CODE_FAILURE_RECORDED: i32 = 1;
+const EXIT_CODE_FAILURE_NOT_RECORDED: i32 = 2;
 
 fn describe_deadline_reason() -> String {
     format!(
-        "The review exceeded its {} minute budget before the job time limit.",
+        "The review exceeded its {}-minute budget before the job time limit.",
         REVIEW_DEADLINE.as_secs() / 60
     )
 }
@@ -64,6 +67,10 @@ fn fail_when_overdue(run: ReviewRun<'_>, comment: &ProgressComment, is_settled: 
 }
 
 fn abandon_review(run: ReviewRun<'_>, comment: &ProgressComment) -> ! {
-    let exit_code = finish_failure(run, comment, &describe_deadline_reason()).map_or(2, |()| 1);
+    terminate_active_children();
+    let exit_code = finish_failure(run, comment, &describe_deadline_reason())
+        .map_or(EXIT_CODE_FAILURE_NOT_RECORDED, |()| {
+            EXIT_CODE_FAILURE_RECORDED
+        });
     std::process::exit(exit_code)
 }

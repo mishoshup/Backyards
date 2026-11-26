@@ -2,15 +2,18 @@ use std::collections::BTreeSet;
 use std::path::Path;
 
 use crate::report::{GateError, pluralize, write_report_line};
-use crate::review::diff::read_local_diff;
+use crate::review::diff::{read_local_diff, split_diff_into_shards};
 use crate::review::model::parse_answer;
 use crate::review::pipeline::{ReviewContext, load_review_context};
 use crate::review::post::{ValidationOutcome, validate_answer};
 use crate::review::prompt::build_review_prompts;
 use crate::review::prompt_file::PromptFile;
-use crate::review::worker::{ReviewerResult, run_each_reviewer_mode};
+use crate::review::worker::{ReviewerResult, run_bounded_shards, run_each_reviewer_mode};
 use crate::review::{ReviewError, ReviewerMode};
 use crate::workspace::{Repository, capture_command};
+
+const MAXIMUM_SHARD_BYTES: usize = 60_000;
+const MAXIMUM_PARALLEL_SHARDS: usize = 4;
 
 #[derive(Debug, Clone)]
 pub struct LocalOptions {
@@ -39,7 +42,45 @@ fn run_one_reviewer(
     context: &ReviewContext<'_>,
     mode: ReviewerMode,
 ) -> Result<ValidationOutcome, GateError> {
-    let prompts = build_review_prompts(repository, mode, &context.rules, &context.diff)?;
+    match mode {
+        ReviewerMode::Inline => run_inline_shards(repository, options, context),
+        ReviewerMode::Holistic => {
+            review_diff_text(repository, options, context, (mode, &context.diff))
+        }
+    }
+}
+
+fn run_inline_shards(
+    repository: &Repository,
+    options: &LocalOptions,
+    context: &ReviewContext<'_>,
+) -> Result<ValidationOutcome, GateError> {
+    let shards = split_diff_into_shards(&context.diff, MAXIMUM_SHARD_BYTES);
+    let results = run_bounded_shards(&shards, MAXIMUM_PARALLEL_SHARDS, |shard| {
+        review_diff_text(repository, options, context, (ReviewerMode::Inline, shard))
+    });
+    merge_shard_outcomes(results)
+}
+
+fn merge_shard_outcomes(
+    results: Vec<Result<ValidationOutcome, GateError>>,
+) -> Result<ValidationOutcome, GateError> {
+    let mut merged = ValidationOutcome::default();
+    for result in results {
+        let outcome = result?;
+        merged.accepted.extend(outcome.accepted);
+        merged.dropped.extend(outcome.dropped);
+    }
+    Ok(merged)
+}
+
+fn review_diff_text(
+    repository: &Repository,
+    options: &LocalOptions,
+    context: &ReviewContext<'_>,
+    (mode, diff): (ReviewerMode, &str),
+) -> Result<ValidationOutcome, GateError> {
+    let prompts = build_review_prompts(repository, mode, &context.rules, diff)?;
     let prompt_file = PromptFile::create(mode, &format!("{}\n\n{}", prompts.system, prompts.user))?;
     let output = run_opencode(repository, options, mode, prompt_file.path());
     let removal = prompt_file.remove();

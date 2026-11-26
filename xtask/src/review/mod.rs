@@ -17,6 +17,7 @@ mod worker;
 pub use cli::{ReviewTask, run_review_task};
 pub use diff::{
     AddedLines, MAXIMUM_DIFF_BYTES, parse_added_lines, read_local_diff, reject_oversized_diff,
+    split_diff_into_shards,
 };
 pub use error::ReviewError;
 pub use github::{

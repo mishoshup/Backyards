@@ -14,6 +14,8 @@ pub enum ReviewError {
     MissingRuleIdentifier { path: PathBuf },
     #[error("rule file {path} has no heading")]
     MissingRuleHeading { path: PathBuf },
+    #[error("rule file {path} is over the {limit} byte limit")]
+    RuleFileTooLarge { path: PathBuf, limit: u64 },
     #[error("model request timed out: {reason}")]
     ModelTimeout { reason: String },
     #[error("model connection failed: {reason}")]
@@ -68,6 +70,7 @@ impl ReviewError {
             | Self::NoRuleFiles { .. }
             | Self::MissingRuleIdentifier { .. }
             | Self::MissingRuleHeading { .. }
+            | Self::RuleFileTooLarge { .. }
             | Self::ModelTruncated { .. }
             | Self::ModelOutputTooLarge { .. }
             | Self::InvalidAnswer { .. }
