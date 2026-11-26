@@ -1,4 +1,5 @@
 use crate::report::GateError;
+use crate::review::error::ReviewError;
 use crate::review::github::client::GitHub;
 use crate::review::github::run_counter::MAXIMUM_RUNS;
 
@@ -6,6 +7,7 @@ pub const BOT_LOGIN: &str = "github-actions[bot]";
 pub const PROGRESS_MARKER: &str = "<!-- backyards-agent-review -->";
 const SHORT_SHA_LENGTH: usize = 7;
 const COMMENTS_PER_PAGE: usize = 100;
+const MAXIMUM_COMMENT_PAGES: usize = 30;
 const PROGRESS_LABEL: &str = "progress";
 const OTHER_LABEL: &str = "other";
 
@@ -60,17 +62,20 @@ impl GitHub {
 
     pub fn count_progress_comments(&self, pull_request: u64) -> Result<usize, GateError> {
         let mut counted = 0;
-        for page in 1_usize.. {
+        for page in 1..=MAXIMUM_COMMENT_PAGES {
             let labels = self.label_comment_page(pull_request, page)?;
             counted += labels
                 .iter()
                 .filter(|label| label.as_str() == PROGRESS_LABEL)
                 .count();
             if counted >= MAXIMUM_RUNS || labels.len() < COMMENTS_PER_PAGE {
-                break;
+                return Ok(counted);
             }
         }
-        Ok(counted)
+        Err(ReviewError::CommentPagesExceeded {
+            limit: MAXIMUM_COMMENT_PAGES,
+        }
+        .into())
     }
 
     fn label_comment_page(&self, pull_request: u64, page: usize) -> Result<Vec<String>, GateError> {

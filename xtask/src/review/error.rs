@@ -38,6 +38,8 @@ pub enum ReviewError {
     ReviewersFailed { details: String },
     #[error("{cause}; recording the failure also failed: {recording}")]
     FailureNotRecorded { cause: String, recording: String },
+    #[error("pull request has more than {limit} pages of comments; run count refused")]
+    CommentPagesExceeded { limit: usize },
     #[error("environment variable {name} is {reason}")]
     MissingEnvironment {
         name: &'static str,
@@ -74,6 +76,7 @@ impl ReviewError {
             | Self::UnknownStatusState { .. }
             | Self::ReviewersFailed { .. }
             | Self::FailureNotRecorded { .. }
+            | Self::CommentPagesExceeded { .. }
             | Self::MissingEnvironment { .. } => false,
         }
     }

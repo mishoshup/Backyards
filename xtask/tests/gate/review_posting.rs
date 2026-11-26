@@ -46,7 +46,7 @@ impl FakeGh {
     fn github(&self, directory: &Path) -> GitHub {
         GitHub::with_program(
             self.program.to_string_lossy().into_owned(),
-            "owner/repository".to_owned(),
+            "owner/repository".parse().unwrap(),
             directory.to_path_buf(),
         )
     }
@@ -245,7 +245,7 @@ fn write_script(directory: &Path, body: &str) -> PathBuf {
 fn github_running(program: &Path, directory: &Path) -> GitHub {
     GitHub::with_program(
         program.to_string_lossy().into_owned(),
-        "owner/repository".to_owned(),
+        "owner/repository".parse().unwrap(),
         directory.to_path_buf(),
     )
 }

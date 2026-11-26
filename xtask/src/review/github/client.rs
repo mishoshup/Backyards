@@ -2,12 +2,13 @@ use std::path::PathBuf;
 use std::time::Duration;
 
 use crate::report::GateError;
+use crate::review::github::repository_name::RepositoryName;
 use crate::workspace::{capture_command, capture_command_limited, pause_for};
 
 #[derive(Debug, Clone)]
 pub struct GitHub {
     program: String,
-    repository: String,
+    repository: RepositoryName,
     directory: PathBuf,
     posting_pause: Duration,
     retry_backoff: Duration,
@@ -19,7 +20,7 @@ const POST_RETRIES: u32 = 2;
 
 impl GitHub {
     #[must_use]
-    pub fn new(repository: String, directory: PathBuf) -> Self {
+    pub fn new(repository: RepositoryName, directory: PathBuf) -> Self {
         let mut github = Self::with_program("gh".to_owned(), repository, directory);
         github.posting_pause = POSTING_PAUSE;
         github.retry_backoff = RETRY_BACKOFF;
@@ -27,7 +28,11 @@ impl GitHub {
     }
 
     #[must_use]
-    pub const fn with_program(program: String, repository: String, directory: PathBuf) -> Self {
+    pub const fn with_program(
+        program: String,
+        repository: RepositoryName,
+        directory: PathBuf,
+    ) -> Self {
         Self {
             program,
             repository,
@@ -39,7 +44,7 @@ impl GitHub {
 
     #[must_use]
     pub fn repository(&self) -> &str {
-        &self.repository
+        self.repository.as_str()
     }
 
     pub fn call(&self, arguments: &[&str]) -> Result<String, GateError> {
@@ -76,7 +81,7 @@ impl GitHub {
     }
 
     fn route(&self, route_suffix: &str) -> String {
-        format!("repos/{}/{route_suffix}", self.repository)
+        format!("repos/{}/{route_suffix}", self.repository.as_str())
     }
 }
 

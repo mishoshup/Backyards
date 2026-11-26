@@ -1,7 +1,7 @@
 use clap::{Args, Subcommand};
 
 use crate::report::GateError;
-use crate::review::github::{AuthorAssociation, EventName};
+use crate::review::github::{AuthorAssociation, EventName, RepositoryName};
 use crate::review::local::{LocalOptions, run_local_review};
 use crate::review::pipeline::{CiOptions, StatusPrefix, run_ci_review};
 use crate::workspace::Repository;
@@ -30,8 +30,8 @@ pub struct LocalArguments {
 pub struct PullRequestArguments {
     #[arg(long)]
     pull_request: u64,
-    #[arg(long, env = "GITHUB_REPOSITORY", value_parser = parse_repository)]
-    repository: String,
+    #[arg(long, env = "GITHUB_REPOSITORY")]
+    repository: RepositoryName,
     #[arg(long, env = "GITHUB_EVENT_NAME", value_enum)]
     event_name: EventName,
     #[arg(long, env = "REVIEW_COMMENT_BODY", default_value = "")]
@@ -69,20 +69,4 @@ pub fn run_review_task(task: &ReviewTask, repository: &Repository) -> Result<(),
         ReviewTask::Local(arguments) => run_local_review(repository, &arguments.into()),
         ReviewTask::PullRequest(arguments) => run_ci_review(repository, &arguments.into()),
     }
-}
-
-fn parse_repository(value: &str) -> Result<String, String> {
-    match value.split_once('/') {
-        Some((owner, name)) if is_repository_part(owner) && is_repository_part(name) => {
-            Ok(value.to_owned())
-        }
-        _ => Err("repository must be written as owner/name".to_owned()),
-    }
-}
-
-fn is_repository_part(part: &str) -> bool {
-    !part.is_empty()
-        && part.chars().all(|character| {
-            character.is_ascii_alphanumeric() || matches!(character, '-' | '_' | '.')
-        })
 }
