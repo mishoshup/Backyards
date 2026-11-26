@@ -1,5 +1,6 @@
 use std::collections::BTreeSet;
 use std::path::Path;
+use std::time::Instant;
 
 use crate::report::{GateError, pluralize, write_report_line};
 use crate::review::diff::{read_local_diff, split_diff_into_shards};
@@ -12,8 +13,8 @@ use crate::review::worker::{ReviewerResult, run_bounded_shards, run_each_reviewe
 use crate::review::{ReviewError, ReviewerMode};
 use crate::workspace::{Repository, capture_command};
 
-const MAXIMUM_SHARD_BYTES: usize = 60_000;
-const MAXIMUM_PARALLEL_SHARDS: usize = 4;
+const MAXIMUM_SHARD_BYTES: usize = 30_000;
+const MAXIMUM_PARALLEL_SHARDS: usize = 6;
 
 #[derive(Debug, Clone)]
 pub struct LocalOptions {
@@ -42,22 +43,29 @@ fn run_one_reviewer(
     context: &ReviewContext<'_>,
     mode: ReviewerMode,
 ) -> Result<ValidationOutcome, GateError> {
-    match mode {
-        ReviewerMode::Inline => run_inline_shards(repository, options, context),
-        ReviewerMode::Holistic => {
-            review_diff_text(repository, options, context, (mode, &context.diff))
-        }
-    }
+    let started = Instant::now();
+    let outcome = run_reviewer_shards(repository, options, context, mode);
+    report_reviewer_duration(mode, started)?;
+    outcome
 }
 
-fn run_inline_shards(
+fn report_reviewer_duration(mode: ReviewerMode, started: Instant) -> Result<(), GateError> {
+    write_report_line(&format!(
+        "{} reviewer finished in {}s",
+        mode.label(),
+        started.elapsed().as_secs()
+    ))
+}
+
+fn run_reviewer_shards(
     repository: &Repository,
     options: &LocalOptions,
     context: &ReviewContext<'_>,
+    mode: ReviewerMode,
 ) -> Result<ValidationOutcome, GateError> {
     let shards = split_diff_into_shards(&context.diff, MAXIMUM_SHARD_BYTES);
     let results = run_bounded_shards(&shards, MAXIMUM_PARALLEL_SHARDS, |shard| {
-        review_diff_text(repository, options, context, (ReviewerMode::Inline, shard))
+        review_diff_text(repository, options, context, (mode, shard))
     });
     merge_shard_outcomes(results)
 }
