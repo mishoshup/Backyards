@@ -17,7 +17,7 @@ pub struct PromptFile {
 
 impl PromptFile {
     pub fn create(mode: ReviewerMode, content: &str) -> Result<Self, GateError> {
-        let path = unique_path(mode);
+        let path = build_unique_path(mode);
         write_private_file(&path, content).map_err(|source| GateError::WriteFile {
             path: path.clone(),
             source,
@@ -60,7 +60,7 @@ fn report_removal_failure(path: &Path) {
     }
 }
 
-fn unique_path(mode: ReviewerMode) -> PathBuf {
+fn build_unique_path(mode: ReviewerMode) -> PathBuf {
     let nanoseconds = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map_or(0, |elapsed| elapsed.as_nanos());

@@ -10,6 +10,7 @@ mod pipeline;
 mod post;
 mod prompt;
 mod prompt_file;
+mod runner;
 mod text;
 mod tools;
 mod worker;

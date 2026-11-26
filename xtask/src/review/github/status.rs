@@ -93,8 +93,10 @@ impl GitHub {
 }
 
 fn run_url() -> Result<Option<String>, ReviewError> {
-    let Ok(run) = std::env::var("GITHUB_RUN_ID") else {
-        return Ok(None);
+    let run = match std::env::var("GITHUB_RUN_ID") {
+        Ok(run) => run,
+        Err(std::env::VarError::NotPresent) => return Ok(None),
+        Err(error) => return Err(ReviewError::unusable_environment("GITHUB_RUN_ID", &error)),
     };
     let server = require_environment("GITHUB_SERVER_URL")?;
     let repository = require_environment("GITHUB_REPOSITORY")?;

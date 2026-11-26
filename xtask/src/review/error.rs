@@ -61,9 +61,13 @@ impl ReviewError {
 
     #[must_use]
     pub const fn is_retryable(&self) -> bool {
+        const HTTP_TOO_MANY_REQUESTS: u16 = 429;
+        const HTTP_SERVER_ERROR_START: u16 = 500;
         match self {
             Self::ModelTimeout { .. } | Self::ModelConnection { .. } | Self::EmptyAnswer => true,
-            Self::ModelStatus { status, .. } => *status == 429 || *status >= 500,
+            Self::ModelStatus { status, .. } => {
+                *status == HTTP_TOO_MANY_REQUESTS || *status >= HTTP_SERVER_ERROR_START
+            }
             Self::DiffTooLarge { .. }
             | Self::MalformedHunkHeader { .. }
             | Self::MalformedDiff { .. }

@@ -12,7 +12,14 @@ pub fn read_local_diff(repository: &Repository, base_reference: &str) -> Result<
     let mut diff = capture_command_limited(
         repository.root(),
         "git",
-        &["diff", merge_base.trim()],
+        &[
+            "diff",
+            "--no-ext-diff",
+            "--no-color",
+            "--src-prefix=a/",
+            "--dst-prefix=b/",
+            merge_base.trim(),
+        ],
         MAXIMUM_DIFF_BYTES,
     )?;
     reject_oversized_diff(&diff)?;
@@ -90,7 +97,17 @@ fn diff_new_file(repository: &Repository, path: &str) -> Result<String, GateErro
     capture_command(
         repository.root(),
         "git",
-        &["diff", "--no-index", "--", "/dev/null", path],
+        &[
+            "diff",
+            "--no-index",
+            "--no-ext-diff",
+            "--no-color",
+            "--src-prefix=a/",
+            "--dst-prefix=b/",
+            "--",
+            "/dev/null",
+            path,
+        ],
         &[SUCCESS_EXIT, DIFFERENCES_FOUND_EXIT],
     )
 }

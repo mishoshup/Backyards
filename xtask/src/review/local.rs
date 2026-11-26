@@ -9,9 +9,10 @@ use crate::review::pipeline::{ReviewContext, load_review_context};
 use crate::review::post::{ValidationOutcome, validate_answer};
 use crate::review::prompt::build_review_prompts;
 use crate::review::prompt_file::PromptFile;
+use crate::review::runner::{ReviewRunner, claude_tools};
 use crate::review::worker::{ReviewerResult, run_bounded_shards, run_each_reviewer_mode};
 use crate::review::{ReviewError, ReviewerMode};
-use crate::workspace::{Repository, capture_command};
+use crate::workspace::{Repository, capture_command, capture_command_with_input_file};
 
 const MAXIMUM_SHARD_BYTES: usize = 30_000;
 const MAXIMUM_PARALLEL_SHARDS: usize = 6;
@@ -20,6 +21,7 @@ const MAXIMUM_PARALLEL_SHARDS: usize = 6;
 pub struct LocalOptions {
     pub base_reference: String,
     pub model: String,
+    pub runner: ReviewRunner,
 }
 
 pub fn run_local_review(repository: &Repository, options: &LocalOptions) -> Result<(), GateError> {
@@ -88,13 +90,24 @@ fn merge_shard_outcomes(
                 merged.accepted.extend(outcome.accepted);
                 merged.dropped.extend(outcome.dropped);
             }
-            Err(error) => first_failure = first_failure.or(Some(error)),
+            Err(error) => first_failure = keep_first_and_report_rest(first_failure, error)?,
         }
     }
     match first_failure {
         Some(error) => Err(report_unreported_findings(&merged, error)?),
         None => Ok(merged),
     }
+}
+
+fn keep_first_and_report_rest(
+    first_failure: Option<GateError>,
+    error: GateError,
+) -> Result<Option<GateError>, GateError> {
+    if first_failure.is_some() {
+        write_report_line(&format!("another shard failed: {error}"))?;
+        return Ok(first_failure);
+    }
+    Ok(Some(error))
 }
 
 fn report_unreported_findings(
@@ -119,7 +132,7 @@ fn review_diff_text(
 ) -> Result<ValidationOutcome, GateError> {
     let prompts = build_review_prompts(repository, mode, &context.rules, diff)?;
     let prompt_file = PromptFile::create(mode, &format!("{}\n\n{}", prompts.system, prompts.user))?;
-    let output = run_opencode(repository, options, mode, prompt_file.path());
+    let output = run_model_process(repository, options, mode, prompt_file.path());
     let removal = prompt_file.remove();
     let output = report_removal_before_failure(output, removal)?;
     let answer = parse_opencode_answer(&output)?;
@@ -147,6 +160,40 @@ fn report_removal_before_failure(
             Err(run_failure)
         }
     }
+}
+
+fn run_model_process(
+    repository: &Repository,
+    options: &LocalOptions,
+    mode: ReviewerMode,
+    prompt_path: &Path,
+) -> Result<String, GateError> {
+    match options.runner {
+        ReviewRunner::Opencode => run_opencode(repository, options, mode, prompt_path),
+        ReviewRunner::Claude => run_claude(repository, options, mode, prompt_path),
+    }
+}
+
+fn run_claude(
+    repository: &Repository,
+    options: &LocalOptions,
+    mode: ReviewerMode,
+    prompt_path: &Path,
+) -> Result<String, GateError> {
+    capture_command_with_input_file(
+        repository.root(),
+        options.runner.program(),
+        &[
+            "-p",
+            mode.attachment_request(),
+            "--model",
+            &options.model,
+            "--tools",
+            claude_tools(mode),
+            "--no-session-persistence",
+        ],
+        prompt_path,
+    )
 }
 
 fn run_opencode(

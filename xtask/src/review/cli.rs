@@ -4,6 +4,7 @@ use crate::report::GateError;
 use crate::review::github::{AuthorAssociation, EventName, RepositoryName};
 use crate::review::local::{LocalOptions, run_local_review};
 use crate::review::pipeline::{CiOptions, StatusPrefix, run_ci_review};
+use crate::review::runner::ReviewRunner;
 use crate::workspace::Repository;
 
 #[derive(Debug, Subcommand)]
@@ -20,10 +21,13 @@ pub struct LocalArguments {
     base: String,
     #[arg(
         long,
-        env = "LOCAL_REVIEW_MODEL",
-        default_value = "opencode/big-pickle"
+        env = "LOCAL_REVIEW_RUNNER",
+        value_enum,
+        default_value = "opencode"
     )]
-    model: String,
+    runner: ReviewRunner,
+    #[arg(long, env = "LOCAL_REVIEW_MODEL")]
+    model: Option<String>,
 }
 
 #[derive(Debug, Args)]
@@ -46,7 +50,11 @@ impl From<&LocalArguments> for LocalOptions {
     fn from(arguments: &LocalArguments) -> Self {
         Self {
             base_reference: arguments.base.clone(),
-            model: arguments.model.clone(),
+            model: arguments
+                .model
+                .clone()
+                .unwrap_or_else(|| arguments.runner.default_model().to_owned()),
+            runner: arguments.runner,
         }
     }
 }

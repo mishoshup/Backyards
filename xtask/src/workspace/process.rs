@@ -50,6 +50,48 @@ pub fn capture_command(
     Ok(String::from_utf8_lossy(&output.stdout).into_owned())
 }
 
+pub fn capture_command_with_input_file(
+    directory: &Path,
+    program: &str,
+    arguments: &[&str],
+    input: &Path,
+) -> Result<String, GateError> {
+    let description = describe_command(program, arguments);
+    let input_file = std::fs::File::open(input).map_err(|source| GateError::ReadFile {
+        path: input.to_path_buf(),
+        source,
+    })?;
+    let child = spawn_with_input_file(directory, program, arguments, input_file)?;
+    let _registration = ActiveChild::register(child.id());
+    let output = child
+        .wait_with_output()
+        .map_err(|source| GateError::RunCommand {
+            command: description.clone(),
+            source,
+        })?;
+    ensure_accepted_exit(&output, &[0], description)?;
+    Ok(String::from_utf8_lossy(&output.stdout).into_owned())
+}
+
+fn spawn_with_input_file(
+    directory: &Path,
+    program: &str,
+    arguments: &[&str],
+    input_file: std::fs::File,
+) -> Result<Child, GateError> {
+    Command::new(program)
+        .args(arguments)
+        .current_dir(directory)
+        .stdin(Stdio::from(input_file))
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|source| GateError::RunCommand {
+            command: describe_command(program, arguments),
+            source,
+        })
+}
+
 fn run_registered(
     directory: &Path,
     program: &str,
@@ -214,10 +256,14 @@ fn collect_stderr(stderr_drain: Option<JoinHandle<Vec<u8>>>) -> Vec<u8> {
     let Some(drain) = stderr_drain else {
         return Vec::new();
     };
-    drain.join().unwrap_or_else(|_panic| {
-        drop(write_report_line("warning: stderr reader thread panicked"));
-        Vec::new()
-    })
+    drain
+        .join()
+        .unwrap_or_else(|_panic| report_stderr_thread_panic())
+}
+
+fn report_stderr_thread_panic() -> Vec<u8> {
+    drop(write_report_line("warning: stderr reader thread panicked"));
+    Vec::new()
 }
 
 fn kill_child(child: &mut Child, description: &str) -> Result<(), GateError> {
