@@ -1,4 +1,6 @@
 const FILE_HEADER_PREFIX: &str = "diff --git ";
+const HUNK_START_MARKER: &str = "@@ ";
+const HUNK_START_AFTER_NEWLINE: &str = "\n@@ ";
 
 #[must_use]
 pub fn split_diff_into_shards(diff: &str, maximum_shard_bytes: usize) -> Vec<String> {
@@ -29,10 +31,14 @@ fn split_into_file_sections(diff: &str) -> Vec<&str> {
 }
 
 fn find_section_starts(diff: &str) -> Vec<usize> {
+    find_line_starts(diff, FILE_HEADER_PREFIX)
+}
+
+fn find_line_starts(text: &str, prefix: &str) -> Vec<usize> {
     let mut starts = Vec::new();
     let mut offset = 0;
-    for line in diff.split_inclusive('\n') {
-        if line.starts_with(FILE_HEADER_PREFIX) {
+    for line in text.split_inclusive('\n') {
+        if line.starts_with(prefix) {
             starts.push(offset);
         }
         offset += line.len();
@@ -44,7 +50,7 @@ fn split_oversized_section(section: &str, maximum_bytes: usize) -> Vec<String> {
     if section.len() <= maximum_bytes {
         return vec![section.to_owned()];
     }
-    let Some(offset) = section.find("\n@@ ") else {
+    let Some(offset) = section.find(HUNK_START_AFTER_NEWLINE) else {
         return vec![section.to_owned()];
     };
     let (header, hunks) = section.split_at(offset + 1);
@@ -63,14 +69,7 @@ fn pack_hunks(header: &str, hunks: &str, maximum_bytes: usize) -> Vec<String> {
 }
 
 fn split_hunks(hunks: &str) -> Vec<&str> {
-    let mut starts: Vec<usize> = Vec::new();
-    let mut offset = 0;
-    for line in hunks.split_inclusive('\n') {
-        if line.starts_with("@@ ") {
-            starts.push(offset);
-        }
-        offset += line.len();
-    }
+    let mut starts = find_line_starts(hunks, HUNK_START_MARKER);
     starts.push(hunks.len());
     starts
         .windows(2)

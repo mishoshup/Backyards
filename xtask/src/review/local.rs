@@ -3,6 +3,7 @@ use std::path::Path;
 use std::time::Instant;
 
 use crate::report::{GateError, pluralize, write_report_line};
+use crate::review::ReviewerMode;
 use crate::review::diff::{read_local_diff, split_diff_into_shards};
 use crate::review::model::parse_answer;
 use crate::review::pipeline::{ReviewContext, load_review_context};
@@ -11,7 +12,6 @@ use crate::review::prompt::build_review_prompts;
 use crate::review::prompt_file::PromptFile;
 use crate::review::runner::{ReviewRunner, claude_tools};
 use crate::review::worker::{ReviewerResult, run_bounded_shards, run_each_reviewer_mode};
-use crate::review::{ReviewError, ReviewerMode};
 use crate::workspace::{Repository, capture_command, capture_command_with_input_file};
 
 const MAXIMUM_SHARD_BYTES: usize = 30_000;
@@ -135,7 +135,7 @@ fn review_diff_text(
     let output = run_model_process(repository, options, mode, prompt_file.path());
     let removal = prompt_file.remove();
     let output = report_removal_before_failure(output, removal)?;
-    let answer = parse_opencode_answer(&output)?;
+    let answer = parse_answer(&output)?;
     Ok(validate_answer(
         answer,
         mode,
@@ -216,10 +216,6 @@ fn run_opencode(
         ],
         &[0],
     )
-}
-
-fn parse_opencode_answer(output: &str) -> Result<crate::review::ReviewAnswer, ReviewError> {
-    parse_answer(output)
 }
 
 fn report_outcomes(outcomes: &[ReviewerResult]) -> Result<(), GateError> {

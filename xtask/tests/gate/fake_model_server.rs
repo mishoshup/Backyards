@@ -89,6 +89,9 @@ fn drain_request(stream: &mut TcpStream) -> String {
     let mut buffer = [0_u8; 4096];
     loop {
         let read = stream.read(&mut buffer).unwrap();
+        if read == 0 {
+            return String::new();
+        }
         received.extend_from_slice(&buffer[..read]);
         if request_is_complete(&received) {
             let text = String::from_utf8_lossy(&received).into_owned();

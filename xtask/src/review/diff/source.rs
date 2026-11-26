@@ -3,23 +3,39 @@ use crate::review::diff::size_limit::{MAXIMUM_DIFF_BYTES, reject_oversized_diff}
 use crate::review::error::ReviewError;
 use crate::workspace::{Repository, capture_command, capture_command_limited};
 
+const STABLE_DIFF_FLAGS: [&str; 4] = [
+    "--no-ext-diff",
+    "--no-color",
+    "--src-prefix=a/",
+    "--dst-prefix=b/",
+];
+const SECRET_FILE_SUFFIXES: [&str; 4] = [".pem", ".key", ".p12", ".pfx"];
 const SUCCESS_EXIT: i32 = 0;
 const DIFFERENCES_FOUND_EXIT: i32 = 1;
 const MAXIMUM_UNTRACKED_LISTING_BYTES: usize = 4_000_000;
+
+fn build_stable_diff_arguments<'a>(options: &[&'a str], operands: &[&'a str]) -> Vec<&'a str> {
+    let mut arguments = vec!["diff"];
+    arguments.extend_from_slice(options);
+    arguments.extend_from_slice(&STABLE_DIFF_FLAGS);
+    arguments.extend_from_slice(operands);
+    arguments
+}
+
+fn is_secret_file(path: &str) -> bool {
+    let name = path.rsplit('/').next().unwrap_or(path);
+    name.starts_with(".env")
+        || SECRET_FILE_SUFFIXES
+            .iter()
+            .any(|suffix| name.ends_with(suffix))
+}
 
 pub fn read_local_diff(repository: &Repository, base_reference: &str) -> Result<String, GateError> {
     let merge_base = find_merge_base(repository, base_reference)?;
     let mut diff = capture_command_limited(
         repository.root(),
         "git",
-        &[
-            "diff",
-            "--no-ext-diff",
-            "--no-color",
-            "--src-prefix=a/",
-            "--dst-prefix=b/",
-            merge_base.trim(),
-        ],
+        &build_stable_diff_arguments(&[], &[merge_base.trim()]),
         MAXIMUM_DIFF_BYTES,
     )?;
     reject_oversized_diff(&diff)?;
@@ -61,6 +77,10 @@ fn diff_untracked_files(
     reject_oversized_listing(&listing)?;
     let mut combined = String::new();
     for path in listing.split('\0').filter(|path| !path.is_empty()) {
+        if is_secret_file(path) {
+            write_report_line(&format!("skipped untracked secret-like file {path}"))?;
+            continue;
+        }
         reject_oversized_text_file(repository, path, tracked_bytes + combined.len())?;
         combined.push_str(&diff_new_file(repository, path)?);
     }
@@ -97,17 +117,7 @@ fn diff_new_file(repository: &Repository, path: &str) -> Result<String, GateErro
     capture_command(
         repository.root(),
         "git",
-        &[
-            "diff",
-            "--no-index",
-            "--no-ext-diff",
-            "--no-color",
-            "--src-prefix=a/",
-            "--dst-prefix=b/",
-            "--",
-            "/dev/null",
-            path,
-        ],
+        &build_stable_diff_arguments(&["--no-index"], &["--", "/dev/null", path]),
         &[SUCCESS_EXIT, DIFFERENCES_FOUND_EXIT],
     )
 }
