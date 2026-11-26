@@ -27,6 +27,8 @@ mod review_posting;
 #[cfg(test)]
 mod review_prompt;
 #[cfg(test)]
+mod review_shards;
+#[cfg(test)]
 mod review_tools;
 #[cfg(test)]
 mod workflow_policy;

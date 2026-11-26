@@ -17,7 +17,7 @@ pub fn decide_run(
     options: &CiOptions,
     head_sha: &str,
 ) -> Result<RunDecision, GateError> {
-    let existing = github.read_status_state(head_sha, &options.status_context())?;
+    let existing = github.read_status_state(head_sha, &options.build_status_context())?;
     if should_skip_review(options.event_name, existing) {
         return Ok(RunDecision::AlreadyReviewed);
     }

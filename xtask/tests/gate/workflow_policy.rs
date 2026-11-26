@@ -92,7 +92,7 @@ fn unpinned_checkout_is_reported() {
 
 #[test]
 fn synchronize_trigger_is_reported() {
-    let workflow = format!("on:\n  pull_request:\n    types: [synchronize]\n{GOOD_WORKFLOW}");
+    let workflow = GOOD_WORKFLOW.replace("[opened, ready_for_review]", "[synchronize]");
     let findings = check_workflow_policy(&workflow_fixture(&workflow).repository()).unwrap();
     assert!(any_message_contains(
         &findings,

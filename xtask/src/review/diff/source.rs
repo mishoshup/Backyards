@@ -30,6 +30,17 @@ fn find_merge_base(repository: &Repository, base_reference: &str) -> Result<Stri
     )
 }
 
+fn reject_oversized_listing(listing: &str) -> Result<(), GateError> {
+    if listing.len() > MAXIMUM_UNTRACKED_LISTING_BYTES {
+        return Err(ReviewError::DiffTooLarge {
+            size: listing.len(),
+            limit: MAXIMUM_UNTRACKED_LISTING_BYTES,
+        }
+        .into());
+    }
+    Ok(())
+}
+
 fn diff_untracked_files(
     repository: &Repository,
     tracked_bytes: usize,
@@ -40,6 +51,7 @@ fn diff_untracked_files(
         &["ls-files", "--others", "--exclude-standard", "-z"],
         MAXIMUM_UNTRACKED_LISTING_BYTES,
     )?;
+    reject_oversized_listing(&listing)?;
     let mut combined = String::new();
     for path in listing.split('\0').filter(|path| !path.is_empty()) {
         reject_oversized_text_file(repository, path, tracked_bytes + combined.len())?;

@@ -38,7 +38,7 @@ impl GitHub {
         head_sha: &str,
     ) -> Result<ProgressComment, GateError> {
         let body_field = format!("body={}", ProgressComment::started_body(head_sha));
-        let identifier = self.api(
+        let identifier = self.call_api(
             &format!("issues/{pull_request}/comments"),
             &["-f", &body_field, "--jq", ".id"],
         )?;
@@ -53,7 +53,7 @@ impl GitHub {
         body: &str,
     ) -> Result<(), GateError> {
         let body_field = format!("body={PROGRESS_MARKER}\n{body}");
-        self.api(
+        self.call_api(
             &format!("issues/comments/{}", comment.identifier),
             &["-X", "PATCH", "-f", &body_field],
         )
@@ -84,7 +84,7 @@ impl GitHub {
         );
         let route =
             format!("issues/{pull_request}/comments?per_page={COMMENTS_PER_PAGE}&page={page}");
-        let output = self.api(&route, &["--jq", &filter])?;
+        let output = self.call_api(&route, &["--jq", &filter])?;
         Ok(output.lines().map(str::to_owned).collect())
     }
 }

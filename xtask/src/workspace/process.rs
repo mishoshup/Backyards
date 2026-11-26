@@ -93,6 +93,7 @@ pub fn capture_command_limited(
 ) -> Result<String, GateError> {
     let description = describe_command(program, arguments);
     let mut child = spawn_with_piped_output(directory, program, arguments, &description)?;
+    let _registration = ActiveChild::register(child.id());
     let stderr_drain = start_stderr_drain(&mut child);
     let captured = match read_or_discard(&mut child, limit + 1, &description) {
         Ok(captured) => captured,

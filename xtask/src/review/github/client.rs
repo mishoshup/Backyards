@@ -14,6 +14,7 @@ pub struct GitHub {
     retry_backoff: Duration,
 }
 
+const SUCCESS_EXIT: i32 = 0;
 const POSTING_PAUSE: Duration = Duration::from_secs(2);
 const RETRY_BACKOFF: Duration = Duration::from_secs(10);
 const POST_RETRIES: u32 = 2;
@@ -48,44 +49,44 @@ impl GitHub {
     }
 
     pub fn call(&self, arguments: &[&str]) -> Result<String, GateError> {
-        capture_command(&self.directory, &self.program, arguments, &[0])
+        capture_command(&self.directory, &self.program, arguments, &[SUCCESS_EXIT])
     }
 
     pub fn post_content(&self, route_suffix: &str, options: &[&str]) -> Result<String, GateError> {
         pause_for(self.posting_pause);
-        let mut result = self.api(route_suffix, options);
+        let mut result = self.call_api(route_suffix, options);
         for attempt in 1..=POST_RETRIES {
             if !result.as_ref().is_err_and(is_transient_failure) {
                 break;
             }
             pause_for(self.retry_backoff * attempt);
-            result = self.api(route_suffix, options);
+            result = self.call_api(route_suffix, options);
         }
         result
     }
 
-    pub fn api_limited(
+    pub fn call_api_limited(
         &self,
         route_suffix: &str,
         options: &[&str],
         limit: usize,
     ) -> Result<String, GateError> {
-        let route = self.route(route_suffix);
-        let arguments = api_arguments(&route, options);
+        let route = self.build_route(route_suffix);
+        let arguments = build_api_arguments(&route, options);
         capture_command_limited(&self.directory, &self.program, &arguments, limit)
     }
 
-    pub fn api(&self, route_suffix: &str, options: &[&str]) -> Result<String, GateError> {
-        let route = self.route(route_suffix);
-        self.call(&api_arguments(&route, options))
+    pub fn call_api(&self, route_suffix: &str, options: &[&str]) -> Result<String, GateError> {
+        let route = self.build_route(route_suffix);
+        self.call(&build_api_arguments(&route, options))
     }
 
-    fn route(&self, route_suffix: &str) -> String {
+    fn build_route(&self, route_suffix: &str) -> String {
         format!("repos/{}/{route_suffix}", self.repository.as_str())
     }
 }
 
-fn api_arguments<'argument>(
+fn build_api_arguments<'argument>(
     route: &'argument str,
     options: &[&'argument str],
 ) -> Vec<&'argument str> {

@@ -19,7 +19,7 @@ pub fn has_reviewable_path(changed_paths: &[String]) -> Result<bool, GateError> 
 
 impl GitHub {
     pub fn list_changed_paths(&self, pull_request: u64) -> Result<Vec<String>, GateError> {
-        let output = self.api(
+        let output = self.call_api(
             &format!("pulls/{pull_request}/files"),
             &["--paginate", "--jq", ".[].filename"],
         )?;

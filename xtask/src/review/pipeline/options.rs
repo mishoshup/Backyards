@@ -13,7 +13,7 @@ pub struct CiOptions {
 
 impl CiOptions {
     #[must_use]
-    pub fn status_context(&self) -> String {
+    pub fn build_status_context(&self) -> String {
         format!("{}/pr-{}", self.status_prefix, self.pull_request)
     }
 }

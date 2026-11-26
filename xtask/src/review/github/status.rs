@@ -64,7 +64,7 @@ impl GitHub {
         if let Some(field) = &target_field {
             options.extend(["-f", field]);
         }
-        self.api(&format!("statuses/{}", update.head_sha), &options)
+        self.call_api(&format!("statuses/{}", update.head_sha), &options)
             .map(|_| ())
     }
 
@@ -75,7 +75,7 @@ impl GitHub {
     ) -> Result<Option<StatusState>, GateError> {
         let filter =
             format!("[.statuses[] | select(.context == \"{context}\") | .state] | first // empty");
-        let output = self.api(
+        let output = self.call_api(
             &format!("commits/{head_sha}/status"),
             &["--paginate", "--jq", &filter],
         )?;

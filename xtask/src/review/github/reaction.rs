@@ -4,7 +4,7 @@ use crate::review::github::client::GitHub;
 impl GitHub {
     pub fn add_comment_reaction(&self, comment_id: &str, content: &str) -> Result<(), GateError> {
         let content_field = format!("content={content}");
-        self.api(
+        self.call_api(
             &format!("issues/comments/{comment_id}/reactions"),
             &["-f", &content_field],
         )
@@ -21,12 +21,12 @@ impl GitHub {
         let filter = format!(
             "[.[] | select(.content == \"{content}\" and .user.login == \"{reactor_login}\")] | first | .id // empty"
         );
-        let reaction_identifier = self.api(&route, &["--jq", &filter])?;
+        let reaction_identifier = self.call_api(&route, &["--jq", &filter])?;
         let reaction_identifier = reaction_identifier.trim();
         if reaction_identifier.is_empty() {
             return Ok(());
         }
-        self.api(&format!("{route}/{reaction_identifier}"), &["-X", "DELETE"])
+        self.call_api(&format!("{route}/{reaction_identifier}"), &["-X", "DELETE"])
             .map(|_| ())
     }
 }

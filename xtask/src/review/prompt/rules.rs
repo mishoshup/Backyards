@@ -77,7 +77,12 @@ fn load_rule_file(repository: &Repository, path: &Path) -> Result<RuleFile, Gate
 }
 
 fn reject_oversized_rule_file(repository: &Repository, path: &Path) -> Result<(), GateError> {
-    let size = std::fs::metadata(repository.root().join(path)).map_or(0, |metadata| metadata.len());
+    let size = std::fs::metadata(repository.root().join(path))
+        .map_err(|source| GateError::ReadFile {
+            path: path.to_path_buf(),
+            source,
+        })?
+        .len();
     if size > MAXIMUM_RULE_FILE_BYTES {
         return Err(ReviewError::RuleFileTooLarge {
             path: path.to_path_buf(),

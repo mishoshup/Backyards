@@ -48,7 +48,7 @@ fn refuse_run(github: &GitHub, options: &CiOptions, previous_runs: usize) -> Res
         "Agent review is limited to {MAXIMUM_RUNS} runs per pull request and {previous_runs} have run. Comment `{FORCE_PHRASE}` to run it again."
     );
     let body_field = format!("body={body}");
-    github.api(
+    github.call_api(
         &format!("issues/{}/comments", options.pull_request),
         &["-X", "POST", "-f", &body_field],
     )?;

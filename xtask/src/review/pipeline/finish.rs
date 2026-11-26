@@ -110,7 +110,7 @@ pub fn record_status(
     state: StatusState,
     description: &str,
 ) -> Result<(), GateError> {
-    let context = run.options.status_context();
+    let context = run.options.build_status_context();
     let update = StatusUpdate {
         head_sha: run.head_sha,
         context: &context,
