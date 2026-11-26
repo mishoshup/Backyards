@@ -1,8 +1,6 @@
 use crate::report::GateError;
 use crate::review::diff::{AddedLines, parse_added_lines};
-use crate::review::model::{
-    ChatMessage, ChatRequest, ModelClient, ReviewAnswer, Role, parse_answer,
-};
+use crate::review::model::{ChatMessage, ChatRequest, ModelClient, ReviewAnswer, Role};
 use crate::review::pipeline::endpoint::endpoint_for;
 use crate::review::post::{ValidationOutcome, validate_answer};
 use crate::review::prompt::{RuleFile, build_review_prompts, load_rule_files};
@@ -73,8 +71,7 @@ fn ask_once(client: &ModelClient, messages: &[ChatMessage]) -> Result<ReviewAnsw
         messages,
         tools: None,
     };
-    let reply = client.complete(request, &mut std::io::stderr())?;
-    Ok(parse_answer(&reply.content)?)
+    Ok(client.complete_answer(request, &mut std::io::stderr())?)
 }
 
 fn build_messages(

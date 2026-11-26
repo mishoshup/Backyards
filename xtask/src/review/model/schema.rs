@@ -62,7 +62,7 @@ fn extract_answer_object(text: &str) -> Option<&str> {
     })
 }
 
-pub fn extract_json_object(text: &str) -> Option<&str> {
+fn extract_json_object(text: &str) -> Option<&str> {
     let candidate = text.get(text.find('{')?..)?;
     let mut values =
         serde_json::Deserializer::from_str(candidate).into_iter::<serde::de::IgnoredAny>();

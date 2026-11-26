@@ -63,6 +63,14 @@ impl ChatMessage {
     }
 
     #[must_use]
+    pub fn assistant_answer(content: String, reasoning: String) -> Self {
+        Self {
+            reasoning_content: Some(reasoning),
+            ..Self::new(Role::Assistant, content)
+        }
+    }
+
+    #[must_use]
     pub fn tool_result(call_identifier: String, content: String) -> Self {
         Self {
             tool_call_id: Some(call_identifier),

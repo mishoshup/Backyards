@@ -3,7 +3,7 @@ use std::path::Path;
 
 use crate::report::{GateError, pluralize, write_report_line};
 use crate::review::diff::read_local_diff;
-use crate::review::model::{extract_json_object, parse_answer};
+use crate::review::model::parse_answer;
 use crate::review::pipeline::{ReviewContext, load_review_context};
 use crate::review::post::{ValidationOutcome, validate_answer};
 use crate::review::prompt::build_review_prompts;
@@ -91,8 +91,7 @@ fn run_opencode(
 }
 
 fn parse_opencode_answer(output: &str) -> Result<crate::review::ReviewAnswer, ReviewError> {
-    let json = extract_json_object(output).ok_or(ReviewError::EmptyAnswer)?;
-    parse_answer(json)
+    parse_answer(output)
 }
 
 fn report_outcomes(outcomes: &[ReviewerResult]) -> Result<(), GateError> {

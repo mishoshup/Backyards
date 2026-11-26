@@ -58,7 +58,7 @@ impl ReviewError {
     #[must_use]
     pub const fn is_retryable(&self) -> bool {
         match self {
-            Self::ModelTimeout { .. } | Self::ModelConnection { .. } => true,
+            Self::ModelTimeout { .. } | Self::ModelConnection { .. } | Self::EmptyAnswer => true,
             Self::ModelStatus { status, .. } => *status == 429 || *status >= 500,
             Self::DiffTooLarge { .. }
             | Self::MalformedHunkHeader { .. }
@@ -67,7 +67,6 @@ impl ReviewError {
             | Self::MissingRuleIdentifier { .. }
             | Self::MissingRuleHeading { .. }
             | Self::ModelTruncated { .. }
-            | Self::EmptyAnswer
             | Self::ModelOutputTooLarge { .. }
             | Self::InvalidAnswer { .. }
             | Self::MalformedStreamEvent { .. }

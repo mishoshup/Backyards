@@ -40,7 +40,10 @@ pub fn run_holistic_review(
 }
 
 fn request_json_only(messages: &mut Vec<ChatMessage>, reply: ModelReply, error: &ReviewError) {
-    messages.push(ChatMessage::new(Role::Assistant, reply.content));
+    messages.push(ChatMessage::assistant_answer(
+        reply.content,
+        reply.reasoning,
+    ));
     messages.push(ChatMessage::new(
         Role::User,
         format!("The answer was rejected: {error}. Respond with the JSON object only."),

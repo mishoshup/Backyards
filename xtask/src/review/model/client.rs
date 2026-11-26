@@ -18,6 +18,7 @@ use crate::review::model::endpoint::{
 };
 use crate::review::model::message::{ChatMessage, FunctionCall, ToolCall, ToolCallKind};
 use crate::review::model::retry::run_with_retry;
+use crate::review::model::schema::{ReviewAnswer, parse_answer};
 use crate::review::model::stream::{
     FinishReason, StreamEvent, ToolCallFragment, parse_stream_line,
 };
@@ -58,6 +59,17 @@ impl ModelClient {
     ) -> Result<ModelReply, ReviewError> {
         run_with_retry(self.endpoint.retry_delay, || {
             self.attempt(request, progress)
+        })
+    }
+
+    pub fn complete_answer(
+        &self,
+        request: ChatRequest<'_>,
+        progress: &mut dyn Write,
+    ) -> Result<ReviewAnswer, ReviewError> {
+        run_with_retry(self.endpoint.retry_delay, || {
+            let reply = self.attempt(request, progress)?;
+            parse_answer(&reply.content)
         })
     }
 

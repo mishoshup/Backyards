@@ -8,4 +8,4 @@ mod stream;
 pub use client::{ChatRequest, ModelClient, ModelReply};
 pub use endpoint::ModelEndpoint;
 pub use message::{ChatMessage, Role, ToolCall};
-pub use schema::{Confidence, ReviewAnswer, Violation, extract_json_object, parse_answer};
+pub use schema::{Confidence, ReviewAnswer, Violation, parse_answer};
