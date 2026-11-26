@@ -11,6 +11,7 @@ use crate::review::tools::limits::{
 use crate::review::tools::list_files::list_repository_paths;
 
 const DEFAULT_SEARCH_PATH: &str = ".";
+const MAXIMUM_LISTED_SKIPPED_FILES: usize = 20;
 
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -107,7 +108,21 @@ fn render_result(result: &SearchResult) -> String {
     if notes.is_empty() {
         return matches;
     }
-    format!("{notes}\n{matches}")
+    format!("{matches}\n{notes}")
+}
+
+fn describe_skipped_files(skipped: &[String]) -> String {
+    let listed = skipped
+        .iter()
+        .take(MAXIMUM_LISTED_SKIPPED_FILES)
+        .cloned()
+        .collect::<Vec<_>>()
+        .join("\n");
+    let omitted = skipped.len().saturating_sub(MAXIMUM_LISTED_SKIPPED_FILES);
+    if omitted == 0 {
+        return format!("[skipped files]\n{listed}");
+    }
+    format!("[skipped files]\n{listed}\n[{omitted} more skipped files not listed]")
 }
 
 fn render_notes(result: &SearchResult) -> String {
@@ -118,7 +133,7 @@ fn render_notes(result: &SearchResult) -> String {
         ));
     }
     if !result.skipped.is_empty() {
-        notes.push(format!("[skipped files]\n{}", result.skipped.join("\n")));
+        notes.push(describe_skipped_files(&result.skipped));
     }
     notes.join("\n")
 }

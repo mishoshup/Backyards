@@ -32,3 +32,5 @@ mod review_shards;
 mod review_tools;
 #[cfg(test)]
 mod workflow_policy;
+#[cfg(test)]
+mod workspace_children;

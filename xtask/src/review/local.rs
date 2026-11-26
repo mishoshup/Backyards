@@ -102,9 +102,12 @@ fn report_unreported_findings(
     failure: GateError,
 ) -> Result<GateError, GateError> {
     write_report_line(&format!(
-        "a shard failed; {} from the other shards were not reported",
+        "a shard failed; {} from the other shards follow",
         pluralize(merged.accepted.len(), "finding", "findings")
     ))?;
+    for violation in &merged.accepted {
+        write_report_line(&violation.describe_for_report())?;
+    }
     Ok(failure)
 }
 

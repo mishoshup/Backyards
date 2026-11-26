@@ -1,4 +1,4 @@
-use std::io::{BufRead, BufReader, Write};
+use std::io::{BufRead, BufReader, Read, Write};
 use std::time::Instant;
 
 use serde_json::{Value, json};
@@ -6,6 +6,7 @@ use serde_json::{Value, json};
 use crate::report::pluralize;
 
 const MAXIMUM_TOOL_CALLS_PER_REPLY: usize = 32;
+const MAXIMUM_STREAM_BYTES: u64 = 16_000_000;
 const MAXIMUM_ANSWER_BYTES: usize = 4_000_000;
 const MAXIMUM_REASONING_BYTES: usize = 4_000_000;
 const MAXIMUM_TOOL_ARGUMENT_BYTES: usize = 1_000_000;
@@ -79,7 +80,12 @@ impl ModelClient {
         progress: &mut dyn Write,
     ) -> Result<ModelReply, ReviewError> {
         let response = self.send_request(request)?;
-        let reader = BufReader::new(response.into_body().into_reader());
+        let reader = BufReader::new(
+            response
+                .into_body()
+                .into_reader()
+                .take(MAXIMUM_STREAM_BYTES),
+        );
         collect_reply(reader, progress)
     }
 
@@ -176,7 +182,6 @@ struct StreamState {
     reasoning_chunks: usize,
     tool_calls: Vec<ToolCall>,
     finish_reason: Option<FinishReason>,
-    is_complete: bool,
     started: Instant,
     last_report: Instant,
 }
@@ -190,7 +195,6 @@ impl StreamState {
             reasoning_chunks: 0,
             tool_calls: Vec::new(),
             finish_reason: None,
-            is_complete: false,
             started: now,
             last_report: now,
         }
@@ -212,12 +216,8 @@ impl StreamState {
             StreamEvent::ToolCalls(fragments) => self.merge_tool_calls(fragments)?,
             StreamEvent::Finished(reason) => {
                 self.finish_reason = Some(reason);
-                self.is_complete = true;
             }
-            StreamEvent::Done => {
-                self.is_complete = true;
-                return Ok(true);
-            }
+            StreamEvent::Done => return Ok(true),
             StreamEvent::Ignored => {}
         }
         Ok(false)

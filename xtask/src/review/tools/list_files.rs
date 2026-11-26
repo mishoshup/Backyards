@@ -5,7 +5,7 @@ use serde::Deserialize;
 
 use crate::review::tools::error::ToolError;
 use crate::review::tools::limits::{MAXIMUM_LISTED_FILES, render_capped_lines};
-use crate::workspace::capture_command;
+use crate::workspace::capture_command_limited;
 
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -25,7 +25,7 @@ pub fn list_files(root: &Path, arguments: &ListFilesArguments) -> Result<String,
 const MAXIMUM_LISTING_BYTES: usize = 16_000_000;
 
 pub fn list_repository_paths(root: &Path) -> Result<Vec<String>, ToolError> {
-    let listing = capture_command(
+    let listing = capture_command_limited(
         root,
         "git",
         &[
@@ -35,7 +35,7 @@ pub fn list_repository_paths(root: &Path) -> Result<Vec<String>, ToolError> {
             "--exclude-standard",
             "-z",
         ],
-        &[0],
+        MAXIMUM_LISTING_BYTES,
     )
     .map_err(|error| ToolError::ListingFailed {
         reason: error.to_string(),
