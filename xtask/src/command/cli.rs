@@ -7,6 +7,7 @@ use crate::checks::{check_pull_request_description, check_pull_request_naming};
 use crate::command::{report_check, run_architecture, run_gate, run_policy, run_workflow_policy};
 use crate::report::Finding;
 use crate::report::GateError;
+use crate::review::{ReviewTask, run_review_task};
 use crate::workspace::Repository;
 
 #[derive(Debug, Parser)]
@@ -39,6 +40,11 @@ pub enum Task {
     Architecture,
     /// Check the invariants of the review workflow
     WorkflowPolicy,
+    /// Run review pipeline tasks
+    Review {
+        #[command(subcommand)]
+        task: ReviewTask,
+    },
     /// Check a commit message file
     CommitMessage { message_file: PathBuf },
     /// Check a pull request title and branch name
@@ -58,6 +64,7 @@ pub enum Task {
 pub fn run_task(task: &Task, repository: &Repository) -> Result<(), GateError> {
     match task {
         Task::Check { should_keep_going } => run_gate(repository, *should_keep_going),
+        Task::Review { task } => run_review_task(task, repository),
         Task::Policy => run_policy(repository),
         Task::Architecture => run_architecture(repository),
         Task::WorkflowPolicy => run_workflow_policy(repository),

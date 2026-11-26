@@ -1,6 +1,0 @@
-[
-  {"type":"function","function":{"name":"read_file","description":"Read a file from the repository checkout. Returns numbered lines. Use start_line and end_line to read a range.","parameters":{"type":"object","properties":{"path":{"type":"string"},"start_line":{"type":"integer"},"end_line":{"type":"integer"}},"required":["path"]}}},
-  {"type":"function","function":{"name":"list_files","description":"List repository files whose path matches a glob such as crates/*/Cargo.toml or *.rs.","parameters":{"type":"object","properties":{"glob":{"type":"string"}},"required":["glob"]}}},
-  {"type":"function","function":{"name":"grep","description":"Search the repository for an extended regular expression. Returns file:line:text matches, at most 100.","parameters":{"type":"object","properties":{"pattern":{"type":"string"},"path":{"type":"string","description":"Directory or file to search. Defaults to the repository root."}},"required":["pattern"]}}},
-  {"type":"function","function":{"name":"fetch_url","description":"Fetch an https documentation page as plain text. Only the documentation hosts listed in this description are allowed: {{ALLOWED_HOSTS}}.","parameters":{"type":"object","properties":{"url":{"type":"string"}},"required":["url"]}}}
-]

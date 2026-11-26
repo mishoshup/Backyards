@@ -1,0 +1,80 @@
+use clap::{Args, Subcommand};
+
+use crate::report::GateError;
+use crate::review::github::{AuthorAssociation, EventName, RepositoryName};
+use crate::review::local::{LocalOptions, run_local_review};
+use crate::review::pipeline::{CiOptions, StatusPrefix, run_ci_review};
+use crate::review::runner::ReviewRunner;
+use crate::workspace::Repository;
+
+#[derive(Debug, Subcommand)]
+pub enum ReviewTask {
+    /// Review the working tree against a base reference with a local model
+    Local(LocalArguments),
+    /// Run both reviewers against a pull request and post the results
+    PullRequest(PullRequestArguments),
+}
+
+#[derive(Debug, Args)]
+pub struct LocalArguments {
+    #[arg(long, env = "BASE_REFERENCE", default_value = "origin/main")]
+    base: String,
+    #[arg(
+        long,
+        env = "LOCAL_REVIEW_RUNNER",
+        value_enum,
+        default_value = "opencode"
+    )]
+    runner: ReviewRunner,
+    #[arg(long, env = "LOCAL_REVIEW_MODEL")]
+    model: Option<String>,
+}
+
+#[derive(Debug, Args)]
+pub struct PullRequestArguments {
+    #[arg(long)]
+    pull_request: u64,
+    #[arg(long, env = "GITHUB_REPOSITORY")]
+    repository: RepositoryName,
+    #[arg(long, env = "GITHUB_EVENT_NAME", value_enum)]
+    event_name: EventName,
+    #[arg(long, env = "REVIEW_COMMENT_BODY", default_value = "")]
+    comment_body: String,
+    #[arg(long, env = "REVIEW_COMMENT_AUTHOR_ASSOCIATION", default_value = "")]
+    comment_author_association: AuthorAssociation,
+    #[arg(long, default_value = "ai-review-completed/deepseek")]
+    status_prefix: StatusPrefix,
+}
+
+impl From<&LocalArguments> for LocalOptions {
+    fn from(arguments: &LocalArguments) -> Self {
+        Self {
+            base_reference: arguments.base.clone(),
+            model: arguments
+                .model
+                .clone()
+                .unwrap_or_else(|| arguments.runner.default_model().to_owned()),
+            runner: arguments.runner,
+        }
+    }
+}
+
+impl From<&PullRequestArguments> for CiOptions {
+    fn from(arguments: &PullRequestArguments) -> Self {
+        Self {
+            pull_request: arguments.pull_request,
+            repository: arguments.repository.clone(),
+            event_name: arguments.event_name,
+            comment_body: arguments.comment_body.clone(),
+            comment_author_association: arguments.comment_author_association,
+            status_prefix: arguments.status_prefix.clone(),
+        }
+    }
+}
+
+pub fn run_review_task(task: &ReviewTask, repository: &Repository) -> Result<(), GateError> {
+    match task {
+        ReviewTask::Local(arguments) => run_local_review(repository, &arguments.into()),
+        ReviewTask::PullRequest(arguments) => run_ci_review(repository, &arguments.into()),
+    }
+}

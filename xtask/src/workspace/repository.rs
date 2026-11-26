@@ -58,10 +58,21 @@ impl Repository {
     }
 
     pub fn read_text(&self, relative: &Path) -> Result<String, GateError> {
-        std::fs::read_to_string(self.root.join(relative)).map_err(|source| GateError::ReadFile {
-            path: relative.to_path_buf(),
-            source,
-        })
+        self.read_confined(relative)
+            .map_err(|source| GateError::ReadFile {
+                path: relative.to_path_buf(),
+                source,
+            })
+    }
+
+    fn read_confined(&self, relative: &Path) -> std::io::Result<String> {
+        let resolved = std::fs::canonicalize(self.root.join(relative))?;
+        if !resolved.starts_with(std::fs::canonicalize(&self.root)?) {
+            return Err(std::io::Error::other(
+                "path resolves outside the repository",
+            ));
+        }
+        std::fs::read_to_string(resolved)
     }
 
     pub fn list_crate_names(&self) -> Result<Vec<String>, GateError> {

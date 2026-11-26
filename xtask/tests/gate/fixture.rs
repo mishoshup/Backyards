@@ -39,15 +39,6 @@ impl Fixture {
         std::fs::write(path, content).unwrap();
     }
 
-    pub fn stage(&self, relative: &str) {
-        let status = Command::new("git")
-            .args(["add", relative])
-            .current_dir(&self.root)
-            .status()
-            .unwrap();
-        assert!(status.success());
-    }
-
     pub fn path(&self) -> &std::path::Path {
         &self.root
     }

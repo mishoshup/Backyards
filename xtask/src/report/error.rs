@@ -8,6 +8,16 @@ pub enum GateError {
         path: PathBuf,
         source: std::io::Error,
     },
+    #[error("cannot write {path}: {source}")]
+    WriteFile {
+        path: PathBuf,
+        source: std::io::Error,
+    },
+    #[error("cannot remove {path}: {source}")]
+    RemoveFile {
+        path: PathBuf,
+        source: std::io::Error,
+    },
     #[error("cannot list {path}: {source}")]
     ReadDirectory {
         path: PathBuf,
@@ -40,6 +50,8 @@ pub enum GateError {
     },
     #[error("failed stages: {}", names.join(", "))]
     StagesFailed { names: Vec<&'static str> },
+    #[error(transparent)]
+    Review(#[from] crate::review::ReviewError),
     #[error("{area}: {}", crate::report::pluralize(*count, "violation", "violations"))]
     Violations { area: &'static str, count: usize },
 }

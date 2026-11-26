@@ -5,24 +5,15 @@ description: Drive a Backyards pull request from local work to merge. Covers the
 
 # Babysit a pull request
 
-The loop runs until the pull request is clean, then reports to the owner and merges only after the owner approves. Pushes to the pull request branch are covered by the standing approval recorded in AGENTS.md section 10 item 5. Pushes to `main` are never allowed.
+The loop spends the local run first and the CI review at most twice. It ends with a report to the owner, and a merge only after the owner approves. Pushes to the pull request branch are covered by the standing approval recorded in AGENTS.md section 10 item 5. Pushes to `main` are never allowed.
 
 ## Loop
 
-1. Develop on a branch named `<type>/<short-description>` created from an up-to-date `main`.
-2. Run `cargo xtask check` and the local review (`scripts/review/run-local-review.sh`) before every push, including the first. Fix every finding that holds against the source and rerun both until the local review reports nothing. Never push on the gate alone, because each CI review round spends the owner's review credits.
-3. Commit with the subject `<type>(<scope>): <subject>`, at most 72 characters, no trailers. Push with `git push origin HEAD:refs/heads/<branch>`.
-4. Wait for the agent review of the pushed commit. Read the checks with `gh pr checks <number>` and the review threads with the query below.
-5. For every unresolved thread, verify the claim against the source, then:
-   - If it holds, fix it in a new commit and reply with the commit and what changed.
-   - If it does not hold, reply with the evidence and the source checked.
-6. Resolve each thread after replying. Push the fixes and return to step 4.
-7. Stop looping when all of these hold for the head commit:
-   - `cargo xtask check` passes locally and every required check passes on the pull request.
-   - The agent review status for the head commit is `success` and posted no new finding.
-   - No review thread is unresolved.
-   - The pull request is not a draft and its title matches `cargo xtask pull-request-naming`.
-8. Re-read the final diff once, confirm the description matches it, and report to the owner what was verified and what was declined. Merge with `gh pr merge <number> --squash --delete-branch` only after the owner approves.
+1. The owner asks for the pull request to be babysat.
+2. Develop on a branch named `<type>/<short-description>` created from an up-to-date `main`. Run `cargo xtask check --keep-going` and `cargo xtask review local` after each change, fix every finding that holds against the source, and repeat until both are clean and the result is trusted. The local run is the main check, because each CI review spends the owner's review credits.
+3. When confident, make the last commit and push with `git push origin HEAD:refs/heads/<branch>`, then open the pull request or mark it ready for review. This starts CI review run 1. On an open, non-draft pull request a push starts no review: toggle draft (`gh pr ready <number> --undo`, then `gh pr ready <number>`) or comment `/agent-review`; the comment form runs the default-branch workflow. Commit subjects use `<type>(<scope>): <subject>`, at most 72 characters, no trailers.
+4. Read the result. If the agent review status is `success` with no finding that holds, report to the owner and ask whether to merge. If findings hold, fix them with the local loop from step 2, push, and request run 2 with a comment that contains `/agent-review`.
+5. CI review runs at most twice per pull request. The code refuses a third run unless the comment contains `/agent-review force`, which only the owner authorizes. After run 2, report the final state to the owner and stop.
 
 ## Review threads
 
@@ -48,11 +39,10 @@ gh api graphql -f query='mutation{resolveReviewThread(input:{threadId:"THREAD_ID
 
 - Reply to a thread before resolving it. A resolved thread without a reply is incomplete.
 - A reply states the commit that fixed the finding or the evidence that it does not hold. It is plain prose.
-- Re-run the agent review with a comment that contains `/agent-review`. Do not use `@` mentions, because they notify other accounts.
+- Request a CI review with a comment that contains `/agent-review`. Do not use `@` mentions, because they notify other accounts. The review does not run on every push.
 - Confirm the account with `gh auth status`. It must be `mishoshup`.
 - A failing check that is not caused by the change is reported, not hidden. Do not merge over a failing required check.
 - When the review service returns an error such as insufficient balance, stop the loop and report it. Do not merge without a completed review.
-- Wait for the review with `gh run watch <run id> --exit-status`, which blocks until the run finishes. Do not poll with sleep.
+- Wait for the review with `gh run watch <run id> --exit-status`, which blocks until the run finishes. Do not poll with sleep. The status `ai-review-completed/deepseek/pr-N` is advisory, not a required check.
 - Run every wait (checks, review runs, builds) as a background command and keep working meanwhile. Open the next task, other pull requests or the next review round in parallel instead of idling on one wait.
-- Stop rule: the loop ends after a review round with no finding about correctness, safety, error handling or tests. Style-only findings from that round are fixed in one last batch or declined with a reply, and the report to the owner follows without waiting for another round.
 - The pull request is updated by adding commits. Never force-push and never merge `main` into the branch.
