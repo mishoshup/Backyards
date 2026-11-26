@@ -143,3 +143,9 @@ fn answer_wrapped_in_prose_is_extracted() {
     let answer = parse_answer("Here is the review: {\"violations\":[]}").unwrap();
     assert_eq!(answer.violations, vec![]);
 }
+
+#[test]
+fn answer_after_brace_in_prose_is_parsed() {
+    let reply = "Review {draft}: {\"violations\":[]}";
+    assert_eq!(parse_answer(reply).unwrap().violations, []);
+}

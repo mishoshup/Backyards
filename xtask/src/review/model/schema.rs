@@ -45,9 +45,20 @@ pub fn parse_answer(text: &str) -> Result<ReviewAnswer, ReviewError> {
     if trimmed.is_empty() {
         return Err(ReviewError::EmptyAnswer);
     }
-    let json = extract_json_object(trimmed).unwrap_or(trimmed);
+    let json = extract_answer_object(trimmed)
+        .or_else(|| extract_json_object(trimmed))
+        .unwrap_or(trimmed);
     serde_json::from_str(json).map_err(|source| ReviewError::InvalidAnswer {
         reason: source.to_string(),
+    })
+}
+
+fn extract_answer_object(text: &str) -> Option<&str> {
+    text.match_indices('{').find_map(|(start, _)| {
+        let candidate = text.get(start..)?;
+        let mut values = serde_json::Deserializer::from_str(candidate).into_iter::<ReviewAnswer>();
+        values.next()?.ok()?;
+        candidate.get(..values.byte_offset())
     })
 }
 

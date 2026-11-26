@@ -100,10 +100,13 @@ fn reject_failure_status(
         .with_config()
         .limit(MAXIMUM_ERROR_DETAIL_BYTES)
         .read_to_string()
-        .unwrap_or_default();
+        .map_or_else(
+            |failure| format!("response body unreadable: {failure}"),
+            |body| body.trim().to_owned(),
+        );
     Err(ReviewError::ModelStatus {
         status: status.as_u16(),
-        detail: detail.trim().to_owned(),
+        detail,
     })
 }
 
@@ -283,15 +286,18 @@ impl StreamState {
     }
 
     fn into_reply(mut self) -> Result<ModelReply, ReviewError> {
-        if !self.is_complete {
-            return Err(ReviewError::ModelTruncated {
-                finish_reason: "stream ended without a finish reason".to_owned(),
-            });
-        }
-        if let Some(FinishReason::Other(other)) = self.finish_reason {
-            return Err(ReviewError::ModelTruncated {
-                finish_reason: other,
-            });
+        match self.finish_reason.take() {
+            Some(FinishReason::Other(other)) => {
+                return Err(ReviewError::ModelTruncated {
+                    finish_reason: other,
+                });
+            }
+            None => {
+                return Err(ReviewError::ModelTruncated {
+                    finish_reason: "stream ended without a finish reason".to_owned(),
+                });
+            }
+            Some(_) => {}
         }
         for call in &mut self.tool_calls {
             if call.function.arguments.trim().is_empty() {

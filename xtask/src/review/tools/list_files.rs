@@ -22,6 +22,8 @@ pub fn list_files(root: &Path, arguments: &ListFilesArguments) -> Result<String,
     Ok(render_capped_lines(&matching, MAXIMUM_LISTED_FILES))
 }
 
+const MAXIMUM_LISTING_BYTES: usize = 16_000_000;
+
 pub fn list_repository_paths(root: &Path) -> Result<Vec<String>, ToolError> {
     let listing = capture_command(
         root,
@@ -38,11 +40,21 @@ pub fn list_repository_paths(root: &Path) -> Result<Vec<String>, ToolError> {
     .map_err(|error| ToolError::ListingFailed {
         reason: error.to_string(),
     })?;
+    reject_oversized_listing(&listing)?;
     Ok(listing
         .split('\0')
         .filter(|path| !path.is_empty())
         .map(str::to_owned)
         .collect())
+}
+
+fn reject_oversized_listing(listing: &str) -> Result<(), ToolError> {
+    if listing.len() <= MAXIMUM_LISTING_BYTES {
+        return Ok(());
+    }
+    Err(ToolError::ListingFailed {
+        reason: format!("file listing is over the {MAXIMUM_LISTING_BYTES} byte limit"),
+    })
 }
 
 fn compile_glob(glob: &str) -> Result<Regex, ToolError> {
