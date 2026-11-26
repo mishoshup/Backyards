@@ -76,7 +76,25 @@ fn describe_placement_failures(failures: &[String]) -> String {
         .map(|failure| format!("- {failure}"))
         .collect::<Vec<_>>()
         .join("\n");
-    format!("\n\n{count}:\n{listed}")
+    let omitted = failures
+        .len()
+        .saturating_sub(MAXIMUM_LISTED_PLACEMENT_FAILURES);
+    format!(
+        "\n\n{count}:\n{listed}{}",
+        describe_omitted_failures(omitted)
+    )
+}
+
+fn describe_omitted_failures(omitted: usize) -> String {
+    if omitted == 0 {
+        return String::new();
+    }
+    let noun = pluralize(
+        omitted,
+        "further placement failure",
+        "further placement failures",
+    );
+    format!("\n- {noun} not listed")
 }
 
 pub fn post_summary_comment(

@@ -63,23 +63,49 @@ fn run_reviewer_shards(
     context: &ReviewContext<'_>,
     mode: ReviewerMode,
 ) -> Result<ValidationOutcome, GateError> {
-    let shards = split_diff_into_shards(&context.diff, MAXIMUM_SHARD_BYTES);
+    let shards = choose_shards(context, mode);
     let results = run_bounded_shards(&shards, MAXIMUM_PARALLEL_SHARDS, |shard| {
         review_diff_text(repository, options, context, (mode, shard))
     });
     merge_shard_outcomes(results)
 }
 
+fn choose_shards(context: &ReviewContext<'_>, mode: ReviewerMode) -> Vec<String> {
+    match mode {
+        ReviewerMode::Inline => split_diff_into_shards(&context.diff, MAXIMUM_SHARD_BYTES),
+        ReviewerMode::Holistic => vec![context.diff.clone()],
+    }
+}
+
 fn merge_shard_outcomes(
     results: Vec<Result<ValidationOutcome, GateError>>,
 ) -> Result<ValidationOutcome, GateError> {
     let mut merged = ValidationOutcome::default();
+    let mut first_failure = None;
     for result in results {
-        let outcome = result?;
-        merged.accepted.extend(outcome.accepted);
-        merged.dropped.extend(outcome.dropped);
+        match result {
+            Ok(outcome) => {
+                merged.accepted.extend(outcome.accepted);
+                merged.dropped.extend(outcome.dropped);
+            }
+            Err(error) => first_failure = first_failure.or(Some(error)),
+        }
     }
-    Ok(merged)
+    match first_failure {
+        Some(error) => Err(report_unreported_findings(&merged, error)?),
+        None => Ok(merged),
+    }
+}
+
+fn report_unreported_findings(
+    merged: &ValidationOutcome,
+    failure: GateError,
+) -> Result<GateError, GateError> {
+    write_report_line(&format!(
+        "a shard failed; {} from the other shards were not reported",
+        pluralize(merged.accepted.len(), "finding", "findings")
+    ))?;
+    Ok(failure)
 }
 
 fn review_diff_text(
@@ -108,7 +134,10 @@ fn report_removal_before_failure(
 ) -> Result<String, GateError> {
     match (output, removal) {
         (Ok(text), Ok(())) => Ok(text),
-        (Ok(_), Err(removal_failure)) => Err(removal_failure),
+        (Ok(_), Err(removal_failure)) => {
+            write_report_line("the model answer was discarded because prompt file removal failed")?;
+            Err(removal_failure)
+        }
         (Err(run_failure), Ok(())) => Err(run_failure),
         (Err(run_failure), Err(removal_failure)) => {
             write_report_line(&removal_failure.to_string())?;

@@ -44,10 +44,10 @@ fn split_oversized_section(section: &str, maximum_bytes: usize) -> Vec<String> {
     if section.len() <= maximum_bytes {
         return vec![section.to_owned()];
     }
-    let hunk_start = section
-        .find("\n@@ ")
-        .map_or(section.len(), |offset| offset + 1);
-    let (header, hunks) = section.split_at(hunk_start);
+    let Some(offset) = section.find("\n@@ ") else {
+        return vec![section.to_owned()];
+    };
+    let (header, hunks) = section.split_at(offset + 1);
     pack_hunks(header, hunks, maximum_bytes)
 }
 

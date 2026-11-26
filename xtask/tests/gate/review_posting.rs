@@ -149,6 +149,7 @@ fn findings_beyond_the_posting_cap_are_summarized_not_dropped() {
     let calls = fake.calls();
     assert_eq!(calls.len(), 31);
     assert!(calls[30].contains("issues/7/comments"));
+    assert!(calls[30].contains("`src/a.rs:31`"));
     assert!(calls[30].contains("`src/a.rs:32`"));
     assert!(!calls[30].contains("`src/a.rs:30`"));
 }
